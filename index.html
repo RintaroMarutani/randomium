@@ -1,0 +1,2805 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<!-- always fetch the latest file on reload (a normal refresh shows new edits — no hard-reload needed) -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<title>RANDOMIUM</title>
+<style>
+  :root{
+    --bg: #05060a;
+    --text: rgba(255,255,255,0.94);
+    --muted: rgba(255,255,255,0.52);
+    --glass: rgba(16,18,26,0.46);
+    --glass-strong: rgba(16,18,26,0.66);
+    --brd: rgba(255,255,255,0.14);
+    --brd-hi: rgba(255,255,255,0.30);
+    --shadow: 0 10px 40px rgba(0,0,0,0.5);
+    --r: 14px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family: ui-sans-serif, -apple-system, "Helvetica Neue", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    overflow:hidden; overscroll-behavior:none; }
+  #gl{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:crosshair; }
+
+  /* ==== BRUTALIST CHROME (Direction 8 / b8-06 composition: full-bleed art between two white bands) ====
+     designs/brand/brutalist/b8-06-mobile.png を PC/モバイル共通の構図として採用 (2026-07-08 ユーザー決定)。
+     白地・黒罫線・システムフォント・表組み。色はアートだけが持つ。v38 の文言レス方針はこの方向決定で置換。 */
+  .band{ position:fixed; left:0; right:0; z-index:6; background:#fff; color:#000;
+    font-family:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif; }
+  .band.top{ top:0; border-bottom:2px solid #000; display:flex; align-items:center;
+    padding:calc(10px + env(safe-area-inset-top)) 18px 10px; }
+  .wordmark{ font-weight:800; font-size:21px; letter-spacing:0.01em; user-select:none; }
+  .bandlink{ margin-left:auto; font-size:12.5px; font-weight:700; letter-spacing:0.05em;
+    color:#000; text-decoration:underline; }
+  .band.bottom{ bottom:0; border-top:2px solid #000;
+    display:flex; align-items:center; flex-wrap:wrap; gap:10px;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom)); }
+  .coordtable{ display:flex; align-items:stretch; border:1.5px solid #000; flex-wrap:wrap; background:#fff; }
+  .coordtable .k, .coordtable .v{ display:flex; align-items:center; padding:8px 10px; font-size:12px; }
+  .coordtable .k{ border-right:1.5px solid #000; letter-spacing:0.05em; font-weight:700; }
+  .coordtable .v{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; border-right:1.5px solid #000;
+    font-variant-numeric:tabular-nums; min-width:74px; }
+  .coordtable .v:last-child{ border-right:none; }
+  .band .spacer{ flex:1; }
+  .bctrl{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  button{ font:inherit; color:#000; cursor:pointer; background:#fff; border:1.5px solid #000;
+    border-radius:0; padding:8px 13px; font-size:12.5px; letter-spacing:0.02em; line-height:1; }
+  button:hover{ background:#000; color:#fff; }
+  button:active{ transform:translate(1px,1px); }
+  button.chip{ padding:7px 11px; font-size:11.5px; }
+  .shape{ display:inline-block; border:1.5px solid currentColor; opacity:0.9; vertical-align:middle; }
+  .register{ font-weight:700; padding:9px 18px; }
+  .register.rare{ background:#000; color:#fff; }
+  .register.rare::after{ content:" ★"; }
+  .register.rare:hover{ background:#fff; color:#000; }
+  @media (max-width:640px){
+    .wordmark{ font-size:17px; }
+    .band.bottom{ gap:8px; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .coordtable .v{ min-width:0; }
+    .coordtable .k, .coordtable .v{ padding:7px 8px; font-size:11px; }
+  }
+  @media (max-width:480px){
+    .coordtable{ width:100%; }
+    .coordtable .k, .coordtable .v{ padding:6px 5px; font-size:10px; flex:1 1 auto; justify-content:center; }
+    .coordtable .k{ flex-grow:0; }
+  }
+
+  .toast{ position:fixed; left:50%; top:calc(58px + env(safe-area-inset-top)); transform:translate(-50%,-8px); z-index:9;
+    padding:10px 16px; font-size:12.5px; letter-spacing:0.02em;
+    background:#fff; color:#000; border:2px solid #000;
+    font-family:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    opacity:0; transition:opacity .25s var(--ease), transform .3s var(--ease); pointer-events:none; }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  .fatal{ position:fixed; inset:0; display:none; place-items:center; z-index:20; padding:24px;
+    background:#fff; text-align:center; }
+  .fatal div{ max-width:420px; color:#333; line-height:1.7; font-size:13px; border:2px solid #000; padding:20px 22px;
+    font-family:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif; }
+
+  /* ---- claim sheet (brutalist white card with black rules — b8-02) ---- */
+  #claimBtn{ position:relative; font-size:13px; line-height:1; }
+  .sheet{ position:fixed; inset:0; z-index:12; display:none; place-items:center; padding:20px;
+    background:rgba(255,255,255,0.5); }
+  .sheet.open{ display:grid; }
+  .card{ width:min(94vw,440px); max-height:88vh; overflow:auto; padding:0;
+    background:#fff; color:#000; border:2px solid #000; border-radius:0;
+    font-family:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif; }
+  .card h2{ margin:0; font-size:15px; font-weight:800; letter-spacing:0.06em; padding:14px 16px;
+    border-bottom:1.5px solid #000; }
+  .card .sub{ margin:0; font-size:12px; color:#222; line-height:1.65; padding:12px 16px;
+    border-bottom:1.5px solid #000; }
+  .card .meta{ display:flex; flex-wrap:wrap; gap:6px; padding:12px 16px 0; margin:0; }
+  .tag{ font-size:11px; padding:4px 9px; border-radius:0; background:#fff;
+    border:1.5px solid #000; color:#000; letter-spacing:0.03em; }
+  .tag.rare{ background:#000; color:#fff; }
+  .field{ margin:0; padding:10px 16px 0; }
+  .field label{ display:block; font-size:11px; color:#444; margin:0 0 5px; letter-spacing:0.04em; }
+  .field select, .field input[type=email]{ width:100%; font:inherit; font-size:13px; color:#000;
+    background:#fff; border:1.5px solid #000; border-radius:0; padding:9px 11px; outline:none;
+    -webkit-appearance:none; appearance:none; }
+  .field select:focus, .field input:focus{ outline:2px solid #000; outline-offset:-1px; }
+  .consent{ display:flex; gap:8px; align-items:flex-start; font-size:11px; color:#333;
+    line-height:1.5; margin:0; padding:12px 16px 0; cursor:pointer; }
+  .consent input{ margin-top:2px; }
+  .card .actions{ display:flex; gap:8px; justify-content:flex-end; align-items:center;
+    padding:12px 16px 14px; margin-top:12px; border-top:1.5px solid #000; }
+  .card .ghostlink{ margin-right:auto; font-size:10.5px; color:#444;
+    background:none; border:none; padding:4px 2px; letter-spacing:0.02em; text-decoration:underline; }
+  .card .ghostlink:hover{ color:#000; background:none; }
+  .card .sub b{ color:#000; font-weight:700; }
+  .card .fine{ font-size:10.5px; color:#444; line-height:1.55; }
+  .card .prov{ margin:0; padding:10px 16px 0; font-size:10.5px; color:#444; line-height:1.55; }
+  .avail{ display:block; font-size:11px; padding:8px 16px 0; margin:0; color:#444; letter-spacing:0.03em; }
+  .avail.taken{ color:#000; font-weight:700; text-decoration:underline; }
+  .avail:empty{ display:none; }
+  .preorder{ display:none; margin:12px 16px 0; font-size:11.5px; color:#000; text-decoration:underline;
+    border:1.5px solid #000; border-radius:0; padding:8px 11px; text-align:center; }
+  .preorder:hover{ background:#000; color:#fff; }
+  .privacy{ margin:0; padding:10px 16px 2px; font-size:10.5px; color:#444; }
+  .privacy summary{ cursor:pointer; letter-spacing:0.03em; text-decoration:underline; }
+  .privacy p{ margin:6px 0 0; line-height:1.6; }
+  button.primary{ background:#000; color:#fff; border-color:#000; font-weight:700; }
+  button.primary:hover{ background:#fff; color:#000; }
+  button:disabled{ opacity:0.4; cursor:not-allowed; }
+  button:disabled:hover{ background:#fff; color:#000; }
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+
+  <!-- BRUTALIST bands (b8-06): full-bleed art between an opaque white header and footer.
+       The footer carries the live coordinate readout (X/Y/Z/HASH = provenance signature) and all controls. -->
+  <header class="band top">
+    <div class="wordmark">RANDOMIUM</div>
+    <a class="bandlink" href="ledger.html" title="公開台帳 — 全記録">LEDGER</a>
+  </header>
+
+  <div class="band bottom bar" id="bar">
+    <div class="coordtable" title="現在座標 — 同じ座標は同じ景色を再現します">
+      <span class="k">X</span><span class="v" id="crdX">0</span>
+      <span class="k">Y</span><span class="v" id="crdY">0</span>
+      <span class="k">Z</span><span class="v" id="crdZ">0</span>
+      <span class="k">HASH</span><span class="v" id="crdH">—</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="bctrl">
+      <button id="rand" title="新しい宇宙を生成 (R)">⟳</button>
+      <button class="chip" data-w="1179" data-h="2556" data-label="phone" title="書き出し スマホ縦 1179×2556"><span class="shape" style="width:7px;height:15px"></span></button>
+      <button class="chip" data-w="2048" data-h="2048" data-label="square" title="書き出し 正方形 2048×2048"><span class="shape" style="width:12px;height:12px"></span></button>
+      <button class="chip" data-w="2480" data-h="3508" data-label="a4" title="書き出し A4縦 2480×3508"><span class="shape" style="width:11px;height:15px"></span></button>
+      <button class="chip" data-w="3840" data-h="2160" data-label="4k" title="書き出し 4K横 3840×2160"><span class="shape" style="width:18px;height:10px"></span></button>
+      <button class="chip" data-w="4134" data-h="5315" data-label="tee" title="書き出し Tシャツ判 4134×5315 (35×45cm@300dpi)"><span class="shape" style="width:10px;height:13px;border-width:2px"></span></button>
+      <button class="register" id="claimBtn" title="この座標を控える — 先行予約の希望登録">Register coordinate</button>
+    </div>
+  </div>
+
+  <!-- 需要検証: この座標を確保する claim フロー。アートは押すまで純粋なまま(モーダルは押下時のみ表示) -->
+  <div class="sheet" id="claim" aria-hidden="true">
+    <div class="card" role="dialog" aria-label="この座標を控える">
+      <h2>この座標を控える</h2>
+      <p class="sub" id="claimSub"></p>
+      <div class="meta" id="claimMeta"></div>
+      <span class="avail" id="claimAvail"></span>
+      <p class="prov">この座標は数式（FBM ノイズ + ドメインワーピング + 決定論ハッシュ）から生成された、AI 学習データを使わない自作アルゴリズムの出力です。同じ座標を入力すれば誰でも同じ景色を再現でき、台帳で一意性を確認できます。</p>
+      <div class="field">
+        <label>予算のイメージ</label>
+        <select id="q_budget">
+          <option value="">選択（任意）</option>
+          <option>〜4,000円</option>
+          <option>4,000〜6,000円</option>
+          <option>6,000〜8,000円</option>
+          <option>一点物として1万円〜</option>
+          <option>まだわからない</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>サイズ</label>
+        <select id="q_size">
+          <option value="">選択（任意）</option>
+          <option>S</option><option>M</option><option>L</option><option>XL</option><option>迷い中</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>用途</label>
+        <select id="q_use">
+          <option value="">選択（任意）</option>
+          <option>自分用</option>
+          <option>ギフト</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>エディションのご希望</label>
+        <select id="q_edition">
+          <option value="">選択（任意）</option>
+          <option>こだわらない</option>
+          <option>できれば一点物（1of1）がいい</option>
+          <option>限定エディションで十分</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>メール（任意・発売のご案内のみ）</label>
+        <input type="email" id="q_email" placeholder="you@example.com" autocomplete="email" inputmode="email" />
+      </div>
+      <a class="preorder" id="claimPreorder" target="_blank" rel="noopener">この座標の先行予約について知る →</a>
+      <label class="consent"><input type="checkbox" id="q_consent" /><span>RANDOMIUM からの新作・発売案内メールの受信に同意します（メールを入力する場合のみ必要）。</span></label>
+      <details class="privacy"><summary>取得情報の取り扱い</summary><p>メールは新作・発売案内の送付のみに使用し、無断で第三者に提供しません。配信停止はメール内リンクからいつでも可能です。座標データは作品台帳の管理に使用します。</p></details>
+      <div class="actions">
+        <button class="ghostlink" id="claimExport" title="保存した座標を CSV で書き出す（運営用）">保存済みを書き出す</button>
+        <button id="claimCancel">閉じる</button>
+        <button class="primary" id="claimSubmit">この座標で登録する</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="fatal" id="fatal"><div>このブラウザは WebGL2 に対応していないようです。最新の Chrome / Safari / Firefox でお試しください。</div></div>
+
+<script type="text/javascript">
+'use strict';
+const cvs = document.getElementById('gl');
+const gl = cvs.getContext('webgl2', { antialias:false, alpha:false, premultipliedAlpha:false, powerPreference:'high-performance' });
+// antialias:false — one fullscreen triangle has no geometry edges; ALL AA is analytic in-shader
+// (aaStep/aaBand/fwidth). MSAA here costs memory + a resolve pass for literally zero visual change.
+// GPU context can be reclaimed (tab background, driver reset, memory pressure) — tell the user instead of
+// silently freezing on the last frame. No auto-restore: all GL objects would need rebuilding; reload is simpler.
+cvs.addEventListener('webglcontextlost', e => {
+  e.preventDefault();
+  const f = document.getElementById('fatal');
+  f.querySelector('div').textContent = '描画コンテキストが失われました。ページを再読み込みしてください。';
+  f.style.display = 'grid';
+});
+if(!gl){ document.getElementById('fatal').style.display='grid'; throw new Error('no webgl2'); }
+
+/* ================= shaders ================= */
+const VERT = `#version 300 es
+out vec2 vUv;
+const vec2 V[3] = vec2[3](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
+void main(){ vec2 p = V[gl_VertexID]; vUv = p*0.5+0.5; gl_Position = vec4(p,0.0,1.0); }`;
+
+const FRAG = `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 frag;
+
+uniform float uAspect;
+uniform float uFlow;        // integrated slow phase (the time axis)
+uniform vec2  uCenter;      // residual of center relative to the FROZEN uCellBase (grows under pan;
+                            // fold-path precision does NOT depend on it — the uFold* bases carry that)
+uniform ivec2 uCellBase;    // integer world cell base (exact)
+uniform float uViewHeight;
+uniform float uLogZoom;
+uniform float uPxPerWorld;
+uniform float uDetail;      // LOD live-octave span ceiling (device governed)
+uniform vec2  uSeed;
+uniform uint  uSeedHash;
+uniform float uEnergy;
+uniform vec2  uBiomeCoord;  // CPU-computed low-freq biome coord (smooth under pan)
+uniform float uLensC;       // central peek-lens strength (0..1) — always-on gentle magnifier at the screen centre
+uniform vec2  uCursor;      // v56: ホバー位置(cc-space)。ホバーハイライト用
+uniform float uCursorFX;    // v56: ホバーハイライト強度(0 = ホバーなし/書き出し)
+// ---- integer coordinate fold (crisp infinite zoom-in): WINDOW base (anchored at D) ----
+uniform uvec2 uFoldCell;    // integer noise-lattice cell at octave uLref, mod 2^32 (per axis)
+uniform vec2  uFoldFrac;    // fractional remainder in [0,1) at octave uLref
+uniform float uFoldScale;   // = uViewHeight * F0 * 2^uLref
+uniform int   uLref;        // window reference octave (may be NEGATIVE on zoom-out)
+// ---- integer coordinate fold: FINE base (anchored at octavePhase()) ----
+uniform uvec2 uFoldCell2;
+uniform vec2  uFoldFrac2;
+uniform float uFoldScale2;  // = uViewHeight * F0 * 2^uLref2
+uniform int   uLref2;       // fine reference octave = floor(octavePhase()) - 2
+// ---- integer coordinate fold: GENERATOR base (anchored at Lgen, scale-following) ----
+uniform uvec2 uFoldCellG;
+uniform vec2  uFoldFracG;
+uniform float uFoldScaleG;  // = uViewHeight * F0 * 2^uLrefG  (≈ constant per octave)
+uniform int   uLrefG;       // generator reference octave (= Lgen)
+uniform float uGenFrac;     // ∈ [0,1) cross-blend handoff phase (paired with uLrefG)
+// per-seed randomized parameters (every number has a range)
+uniform vec4  uFreq;   // worleyJitterMul, stripeFreq, contourFreq, gridWarpGain
+uniform float uRegimePhase; // per-seed shift of the regime ladder [0,CYCLE) — same zoom depth lands on a
+                            // different regime per seed. Constant offset = spatially uniform → pan-seamless,
+                            // and both loop ends shift equally → the wrap crossfade behaviour is unchanged.
+uniform vec4  uGenA;   // generator personality multipliers: worley, sdf, truchet, grid   (R 0.65..1.5)
+uniform vec4  uGenB;   // .xyz = contour, stripe, lines multipliers; .w = truchet line width (R 1.3..2.8)
+uniform vec4  uGrade;  // grade personality: saturation, splitTonePush, bloomKnee, vignetteFloor
+uniform float uThemeLock; // how strongly the seed's HOME theme dominates themePos (was fixed 0.35)
+// THEME WHEEL: the zoom cycle walks 6 SLOTS (slot space is untouched — the loop-wrap theme periodicity of
+// v28 lives there). Each seed maps its 6 slots into the 20-biome palette bank via slot -> mod(base+slot*stride,20),
+// so every world curates its own sextet of biomes while the seam stays mathematically seamless.
+uniform float uThemeBase;   // integer-valued 0..15
+uniform float uThemeStride; // integer-valued, odd (1/3/5/7) -> 6 distinct biomes per seed
+uniform vec4  uShape;  // lineWidthPx, lineSpacing, warpAmp, foldAmp
+uniform vec4  uTone;   // flowSpeedMul, metalBias, contrast, meltK
+// FINISH PRESET (seed-derived, INDEPENDENT of seedHash → a true combinatorial multiplier, see docs/DIVERSITY_EXPANSION.md §6).
+// The post() finish constants are no longer hardcoded: each seed draws a named finish preset from uSeed (vec2, the
+// independent RNG source) so "背景 × 仕上げ" is an honest product. Screen-locked/print-face effects only; export-parity
+// is automatic (uniforms flow through the single setUniforms path).
+uniform vec4  uFinishTone; // sCurveAmt, localContrastAmt, satMul, bloomMul
+uniform vec4  uFinishTex;  // caMul, grainMul, halftoneAmt, posterizeLevels(0=off)
+uniform vec2  uPalette;    // hueRotate(radians), monoAmt — seed-derived 配色戦略 (color-relationship axis)
+// v55c: バイオーム配色ランダム化 — テーマホイールの 6 スロットぶんの OKLab パレットを CPU が事前計算して渡す。
+// 各バイオームは seedHash 由来のコインで 50% 既定色 / 50% ランダム色(uSeedHash の純関数 → HASH で完全再現、
+// canonicalId は sh を含むので一点性も自動整合、claims.gs 変更不要)。シェーダーは baked const 配列の代わりに
+// これをスロット index で読む(per-pixel コスト不変 = CPU 前計算・36 vec3 uniform)。
+uniform vec3  uSlotCool[6];
+uniform vec3  uSlotWarm[6];
+uniform vec3  uSlotBg[6];
+uniform vec3  uSlotInk[6];
+uniform vec3  uSlotStar[6];
+uniform vec3  uSlotGlow[6];
+uniform float uScan;       // CRT scanline strength (screen-locked, resolution-relative ~240 lines); 0 = off
+uniform float uLayer;      // double-exposure: strength of a palette-tinted luminous second layer (screen-blended); 0 = off
+uniform float uExport; // 0 = live (mobile-cheap), 1 = FBO export (full strength)
+uniform float uDotPitch;    // halftone dot-screen pitch in buffer px (= renderHeight/55, resolution-relative)
+const float DOT_AMT = 0.0;  // halftone strength (0 = off — superseded by the retro PIXEL mode below; raise to re-enable)
+// RETRO PIXEL MODE (古いゲームのドット): uPixel = block size in buffer px (0 = off). The sampling coordinate
+// is snapped to block centres BEFORE the field is computed → every real pixel in a block shows the same
+// colour = true chunky pixels. Combined with posterize + per-block ordered dither in post() for the
+// limited-palette look. uResY = buffer height (to rebuild uv from the snapped gl_FragCoord).
+uniform float uPixel;
+uniform float uResY;
+uniform vec2  uTileOrigin;  // v55: 書き出しタイル分割 — この量を gl_FragCoord に足して「全画像座標」を得る。
+                            // 単発 FBO では (0,0)。uResY/uAspect は常に全画像寸法なので screen-locked 効果は
+                            // タイル境界で連続(ハーフトーン/グレイン/走査線が全体で1枚に整う)。
+uniform float uRenderScale; // live adaptive resolution (1.0 = full). Screen-locked grain fades as this drops
+                            // so the low-res buffer, upscaled to the display, never shows chunky grain "pixels".
+float grainVis(){ return smoothstep(0.55, 0.92, uRenderScale); }   // 1 at full res, →0 as resolution drops
+
+const mat2 M = mat2(1.6,1.2,-1.2,1.6);
+#define OCT_MAX 16
+
+/* ---- integer PCG hash (kills sin-beat tiling; seed folded into the hash) ---- */
+uint pcg(uint v){ uint s=v*747796405u+2891336453u; uint w=((s>>((s>>28u)+4u))^s)*277803737u; return (w>>22u)^w; }
+uvec2 pcg2(uvec2 v){ v=v*1664525u+1013904223u; v.x+=v.y*1664525u; v.y+=v.x*1664525u; v^=(v>>16u);
+                     v.x+=v.y*1664525u; v.y+=v.x*1664525u; v^=(v>>16u); return v; }
+vec2  hash22i(vec2 p){ uvec2 q=uvec2(ivec2(floor(p))+0x10000); uvec2 h=pcg2(q ^ uvec2(uSeedHash)); return vec2(h)/4294967295.0; }
+vec2  hash22(vec2 p){ return hash22i(p)*2.0 - 1.0; }
+
+/* ---- precision-correct integer-cell hashing (deep-zoom stable) ---- */
+vec2 hash22cell(ivec2 cell){
+  uvec2 q = uvec2(cell + 0x10000);
+  uvec2 h = pcg2(q ^ uvec2(uSeedHash));
+  return vec2(h)/4294967295.0 * 2.0 - 1.0;
+}
+// gnoise over (integer base cell) + (small relative position).
+// integer part of rel peeled into cell with integer math; f stays in [0,1).
+float gnoise_p(ivec2 base, vec2 rel){
+  vec2 fl=floor(rel);
+  ivec2 cell = base + ivec2(fl);
+  vec2 f = rel - fl;
+  vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(dot(hash22cell(cell+ivec2(0,0)), f-vec2(0.0,0.0)),
+                 dot(hash22cell(cell+ivec2(1,0)), f-vec2(1.0,0.0)), u.x),
+             mix(dot(hash22cell(cell+ivec2(0,1)), f-vec2(0.0,1.0)),
+                 dot(hash22cell(cell+ivec2(1,1)), f-vec2(1.0,1.0)), u.x), u.y);
+}
+
+/* hash on a uvec2 cell mod 2^32 — avoids the int32 (+0x10000) overflow seam that full-range
+   fold cells expose near 2^31 (H1). Same PCG / statistics as hash22cell. */
+vec2 hash22cellU(uvec2 cell){
+  uvec2 h = pcg2(cell ^ uvec2(uSeedHash));
+  return vec2(h)/4294967295.0 * 2.0 - 1.0;
+}
+/* Folded single-octave gradient noise == gnoise_p(uCellBase, residual·F0·2^(Lbase+i)) but precise.
+   cell(i) = uCellBase + (foldCell<<i) + floor(P0·2^i) ; f(i) = fract(P0·2^i).  uCellBase UNSCALED (C2). */
+float gnoiseFoldB(int i, vec2 P0, uvec2 foldCell){
+  vec2 scaled = P0 * exp2(float(i));                 // P0~[0,2], i<=~9 → small, floor exact
+  vec2 fl = floor(scaled);
+  uvec2 cellU = uvec2(uCellBase) + (foldCell << uint(i)) + uvec2(ivec2(fl));   // all mod 2^32
+  vec2 f = scaled - fl;
+  vec2 u = f*f*(3.0-2.0*f);
+  return mix(mix(dot(hash22cellU(cellU + uvec2(0u,0u)), f-vec2(0.0,0.0)),
+                 dot(hash22cellU(cellU + uvec2(1u,0u)), f-vec2(1.0,0.0)), u.x),
+             mix(dot(hash22cellU(cellU + uvec2(0u,1u)), f-vec2(0.0,1.0)),
+                 dot(hash22cellU(cellU + uvec2(1u,1u)), f-vec2(1.0,1.0)), u.x), u.y);
+}
+/* octave-uLref / uLref2 / uLrefG noise coords of THIS (warped) pixel; set in main() before sampling. */
+vec2 gP0win;
+vec2 gP0fine;
+vec2 gP0gen;     // generator-octave coord (scale-following)
+// phone / under-motion: fade the generators' 2nd cross-blend octave out SMOOTHLY as uDetail drops (the old
+// hard "uDetail < 4.1" bool snapped 50% of sub-octave structure in/out when the LOD crossed the threshold —
+// visible as a pop mid wrap-fade and when motion starts/stops).
+float crossBlendAmt(){ return smoothstep(3.9, 4.3, uDetail); }
+// per-generator integer octave-density bias (power-of-two ONLY — composes with the fold's <<i)
+const int GFB_WOR=1, GFB_TRU=0, GFB_SDF=0, GFB_GRID=1, GFB_FLOW=0, GFB_CONT=1, GFB_STR=0, GFB_LIN=0;
+struct GenCell { uvec2 cell; vec2 f; };
+// fold-precise integer cell + local fract for a generator lattice. oct = cross-blend octave (0=current,1=finer).
+GenCell genCell(int octBias, int oct){
+  int sh = octBias + oct;
+  vec2 P  = gP0gen * exp2(float(sh));                 // small (P0~[0,2], sh<=~3) → floor exact
+  vec2 fl = floor(P);
+  GenCell c;
+  c.cell = uvec2(uCellBase) + (uFoldCellG << uint(sh)) + uvec2(ivec2(fl));   // all mod 2^32, composes exactly
+  c.f    = P - fl;
+  return c;
+}
+vec2 genCoord(int octBias){ return gP0gen * exp2(float(octBias)); }          // continuous octave-following coord
+vec2 hashCellN(uvec2 cell, ivec2 d){ return hash22cellU(cell + uvec2(d)); }   // unsigned-neighbour hash, mod 2^32
+
+/* file-scope integer base, set once per fragment in computeFieldAnchored */
+ivec2 gBase;
+
+/* back-compat for generators: route gnoise through the precise path */
+float gnoise(vec2 rel){ return gnoise_p(gBase, rel); }
+
+/* precision-stable fbm with explicit octave count; RE-PEELS each octave so
+   |coord| never grows toward millions no matter how deep. */
+float fbm_p(vec2 rel, float octaves){
+  float a=0.5, sum=0.0, norm=0.0, full=floor(octaves), frac=octaves-full;
+  ivec2 b=gBase; vec2 r=rel;
+  for(int i=0;i<OCT_MAX;i++){
+    if(float(i) >= full+1.0) break;
+    float w = (float(i) <= full-1.0) ? 1.0 : frac;
+    sum += a*w*gnoise_p(b, r); norm += a*w;
+    r = M*r;
+    vec2 fl=floor(r);
+    b += ivec2(fl);
+    r -= fl;
+    a *= 0.5;
+  }
+  return sum/max(norm,1e-3);
+}
+// PERF: generator-internal fbm octaves are bounded by the device LOD governor (uDetail), NOT the raw
+// pixel density. The coherent window FBM (fbmWindow, governed by lodSpan/uDetail) + microGrain carry the
+// fine surface detail, so the domain-warp generators only need ~uDetail octaves. autoOctaves previously
+// saturated to 15 at deep zoom (genFlow alone = 5 fbm * 15 oct) — the single biggest LIVE cost. Under
+// motion uDetail drops, so generators auto-cheapen exactly when frames are scarce. EXPORT keeps the full
+// 15-octave ceiling (uExport guard) so print stays bit-for-bit rich; only the live view is capped.
+float autoOctaves(){ float o = log2(max(uPxPerWorld,1.0)) - 1.0;
+  float cap = (uExport > 0.5) ? float(OCT_MAX)-1.0 : uDetail;   // export: full octaves; live: LOD-governed
+  return clamp(o, 1.0, cap); }
+#define fbm(p) fbm_p((p), autoOctaves())
+float fbm01(vec2 p){ return fbm(p)*0.5+0.5; }
+
+/* plain absolute low-freq noise for the biome / theme map (smooth under pan; NOT gBase-anchored) */
+const float BIOME_F = 0.04;
+float bnoise(vec2 p){
+  vec2 i=floor(p), f=fract(p), u=f*f*(3.0-2.0*f);
+  return mix(mix(dot(hash22(i+vec2(0.0,0.0)),f-vec2(0.0,0.0)), dot(hash22(i+vec2(1.0,0.0)),f-vec2(1.0,0.0)),u.x),
+             mix(dot(hash22(i+vec2(0.0,1.0)),f-vec2(0.0,1.0)), dot(hash22(i+vec2(1.0,1.0)),f-vec2(1.0,1.0)),u.x),u.y);
+}
+float biomeField(vec2 bc){ return (bnoise(bc)*0.6 + bnoise(bc*2.1+7.3)*0.4)*0.5+0.5; }
+
+/* ============================================================
+   ANCHORED OCTAVE-WINDOW FBM  (coherent infinite zoom core)
+   rel = SMALL residual world coords (relative to uCellBase).
+   D   = detail level = uLogZoom + DETAIL_BIAS. Window of ~span
+   octaves slides up in k as you zoom in: coarse fade out / fine fade in.
+   ============================================================ */
+const float LACUNARITY = 2.0;
+const float GAIN       = 0.5;
+const float F0         = 0.18;
+const float HURST      = 1.0;
+
+/* --- detail-on-zoom gates --- */
+const float DTL_LO_PX     = 64.0;   // feature must be >=64px before sub-detail starts
+const float DTL_HI_PX     = 280.0;  // fully detailed once a feature is >=280px on screen
+const float DTL_AA_MIN_PX = 1.3;    // sub-features thinner than ~1.3px fade out (Nyquist)
+
+float octWin(float x, float span){
+  float r = clamp(x / max(span*0.5,1e-3), -1.0, 1.0);
+  return 0.5 + 0.5*cos(r*3.14159265);
+}
+// fewer octaves when each world cell covers few pixels (wide/distant view)
+float lodSpan(){
+  float s = 2.0 + clamp(log2(max(uPxPerWorld,1.0)) - 1.0, 0.0, 4.0);
+  return min(s, uDetail);
+}
+// returns vec2(value01, parent01). P0win = octave-uLref noise coord (uFoldFrac + ccWarped*uFoldScale).
+vec2 fbmWindow(vec2 P0win, float D, float span){
+  float kLo = float(uLref);          // AUTHORITATIVE — CPU owns the floor (C1). No GPU floor here.
+  float kHi = ceil(D + span*0.5);
+
+  // parent = SMOOTH weighted blend of the coarse live octaves (no discrete pick → seamless zoom)
+  // NOTE: the parent loop and the main loop recompute gnoiseFoldB per octave. A local nCache[OCT_MAX] dedup
+  // was tried but REGRESSED on ANGLE/Metal (the dynamically-indexed array spilled to thread-local memory,
+  // cratering occupancy → whole shader slower at shallow zoom). Recomputing the hash is cheaper than the
+  // spill here; the real win is the autoOctaves cap + octave-b skip, not this. Left as the original two loops.
+  float pSum=0.0, pNorm=0.0;
+  for(int idx=0; idx<OCT_MAX; idx++){
+    float k = kLo + float(idx);
+    if(k > kHi) break;
+    float w  = octWin(k - D, span);
+    float cw = w * (1.0 - smoothstep(D - span*0.45, D, k));   // weight toward coarse octaves, continuous
+    if(cw < 0.002) continue;
+    float n = gnoiseFoldB(idx, gP0win, uFoldCell) * 0.5 + 0.5;   // i == idx (kLo == uLref)
+    pSum += cw*n; pNorm += cw;
+  }
+  float parent  = (pNorm>1e-5) ? pSum/pNorm : 0.5;
+  float voidAtm = mix(0.55, 1.0, smoothstep(0.35,0.75,parent));   // voids keep some atmosphere
+
+  // windowed sum; fine octaves smoothly gated by the (now continuous) parent
+  float sum=0.0, norm=0.0;
+  for(int idx=0; idx<OCT_MAX; idx++){
+    float k = kLo + float(idx);
+    if(k > kHi) break;
+    float w = octWin(k - D, span);
+    if(w < 0.004) continue;
+    float amp = pow(GAIN, k*HURST);
+    float n = gnoiseFoldB(idx, gP0win, uFoldCell) * 0.5 + 0.5;
+    float isFine   = smoothstep(D - span*0.25, D + span*0.1, k);
+    float fineMask = mix(1.0, voidAtm, isFine);
+    sum  += w * amp * fineMask * n;
+    norm += w * amp;
+  }
+  float v = (norm > 1e-5) ? sum / norm : 0.5;
+  return vec2(v, parent);
+}
+
+/* ---- helpers ---- */
+// effective pixel footprint: in retro-pixel mode one "pixel" is a uPixel-sized block, so every Nyquist /
+// AA / detail gate built on worldPx automatically band-limits the field to the block grid (no shimmer).
+// v55: fwidth(vUv.y) → 1.0/uResY。vUv はビューポート相対なのでタイル書き出しではタイル高さで割れてしまい
+// LOD/detail が狂う。uResY(全画像高さ)は単発では fwidth(vUv.y)=1/renderHeight と厳密一致(=export parity)、
+// タイルでは全画像基準で正しい。他の fwidth/dFdx はすべてフィールド値(fragC の関数)で、fragC の 1px 刻みは
+// 単発/タイルで同一 → タイル不変なので変更不要。
+float worldPx(){ return uViewHeight * (1.0/uResY) * max(uPixel, 1.0); }
+
+/* ===== zoom-revealed sub-detail core (seamless, alias-safe) ===== */
+float featurePx(float featureWorld){ return featureWorld / max(worldPx(), 1e-9); }
+float microAmt(){ return smoothstep(2.0, 6.0, log2(max(uPxPerWorld,1.0))); }          // global "zoomed in?" gate
+float detailPx(float featureWorld){ return smoothstep(DTL_LO_PX, DTL_HI_PX, featurePx(featureWorld)); }
+float nyquist(float subWorld){ return smoothstep(DTL_AA_MIN_PX, DTL_AA_MIN_PX*2.2, featurePx(subWorld)); }
+float subFbm(vec2 p, int oct){
+  float a=0.5, s=0.0, n=0.0;
+  for(int i=0;i<3;i++){ if(i>=oct) break; s += a*(gnoise(p)*0.5+0.5); n += a; p = M*p; a *= 0.5; }
+  return s/max(n,1e-4);
+}
+float subFbm(vec2 p){ return subFbm(p,2); }
+float subRidge(vec2 p, int oct){   // ridged variant for fibres / striations
+  float a=0.5, s=0.0, n=0.0;
+  for(int i=0;i<3;i++){ if(i>=oct) break; s += a*(1.0-abs(gnoise(p))); n += a; p = M*p*1.03; a *= 0.5; }
+  return s/max(n,1e-4);
+}
+/* ===== fractal-displacement detail driver: detail RENEWS per octave (no saturation) =====
+   octave phase rolls with zoom => roughness perpetually re-arrives; amplitude ~ wavelength
+   (the /freq) => constant slope => self-similar; sampled via gnoise => same precise lattice. */
+const float FRAC_EDGE_AMP   = 0.35;
+const float FRAC_MEANDER    = 0.50;
+const float MICRO_GRAIN_MAX = 0.22;
+float octavePhase(){ return log2(max(uPxPerWorld, 1.0)); }
+// 0 inside the home band, →1 as zoom DEPARTS it in EITHER direction (zoom-IN via octavePhase,
+// zoom-OUT via uLogZoom). Drives scale-following coords AND octave cross-blend so the world
+// subdivides seamlessly BOTH ways — the key to symmetric infinite zoom (no dead wash on zoom-out).
+float scaleFollowAmt(){ return max(smoothstep(2.0, 5.0, octavePhase()), 1.0 - smoothstep(-6.0, -4.0, uLogZoom)); }
+float octTri(float x){ float f = fract(x); return 1.0 - abs(2.0*f - 1.0); }
+// fraction of the FINEST fine-base octave (uLref2+3) still resolvable (>=~2px). 0 at zoom-out → no speckle carpet.
+float fineVisible(){
+  float featWorld = 1.0 / max(F0 * exp2(float(uLref2) + 3.0), 1e-6);
+  return smoothstep(1.0, 3.0, featurePx(featWorld));
+}
+// continuous-generator coord: home-band residual coord → scale-following coord as zoom departs (either way)
+vec2 contCoord(vec2 oldP, int octBias){ return mix(oldP, genCoord(octBias), scaleFollowAmt()); }
+// NOTE: samples the FINE fold base (gP0fine) only — it deliberately takes NO position argument. Earlier
+// versions accepted a dead "vec2 p" that call sites filled with misleading fake frequencies (p*1.3 etc.).
+vec2 fracDispVec(float lacEmph, vec2 phase){
+  float ph = octavePhase();
+  // 3-tap octave window as a PARTITION OF UNITY (sum≡1): the old octTri gave weights {1-g,g,1-g} whose finest tap
+  // slammed to full weight at every integer octavePhase → a per-octave "pop" (~76% displacement jump) visible in
+  // worley edges / contour meander. {1-g,1,g}/2 fades the entering finest tap IN from 0, so it melts across octaves.
+  float gWin = clamp(ph - float(uLref2) - 2.0, 0.0, 1.0);   // fractional slide within the current octave triple
+  vec2 disp = vec2(0.0); float amp = 1.0;
+  for(int j=0;j<3;j++){
+    float k = float(uLref2) + float(j);               // baseK = floor(ph)-2 == uLref2
+    float w = ((j==0) ? (1.0-gWin) : (j==1) ? 1.0 : gWin) * 0.5;
+    float freqInv = exp2(-(float(uLref2) + float(j)));  // 1/freq amplitude law (self-similar)
+    vec2 s = vec2(gnoiseFoldB(j, gP0fine + phase,                  uFoldCell2),
+                  gnoiseFoldB(j, gP0fine + phase + vec2(0.37,0.61), uFoldCell2));
+    disp += (amp*w) * s * freqInv;
+    amp *= lacEmph;
+  }
+  return disp * fineVisible();   // suppress fine-base displacement at zoom-out (kills speckle carpet)
+}
+vec2 fracDispVec(float lacEmph){ return fracDispVec(lacEmph, vec2(0.0)); }
+float fracDisp(){ vec2 d = fracDispVec(0.62, vec2(0.0)); return d.x + d.y; }
+// per-feature amplitude: birth(size) * death(Nyquist) * renewal(per-octave, the anti-saturation key)
+float fracAmt(float featureWorld, float subWorld){
+  return detailPx(featureWorld) * nyquist(subWorld) * (0.55 + 0.45*octTri(octavePhase()*0.5));
+}
+// multiplicative surface micro-grain: flat fills become material, renews per octave, self-limits at Nyquist
+float microGrain(vec2 p, vec2 phase){
+  // deepFade: past the f32 detail ceiling the field is smooth large forms; the screen-locked grain
+  // would just become a static speckle carpet → fade it out so extreme zoom degrades to smooth.
+  float a = microAmt() * (0.6 + 0.4*octTri(octavePhase()*0.5)) * fineVisible()
+          * (1.0 - smoothstep(27.0, 33.0, uLogZoom)) * grainVis();   // fade grain when down-rendering (anti-pixel)
+  if(a < 0.003) return 1.0;
+  // ridged grain folded onto the FINE base; octave floor(octavePhase()) == uLref2+2 → i = 2,3
+  float r0 = 1.0 - abs(gnoiseFoldB(2, gP0fine + phase,                  uFoldCell2));
+  float r1 = 1.0 - abs(gnoiseFoldB(3, gP0fine + phase + vec2(0.13,0.71), uFoldCell2));
+  float g  = (r0*0.5 + r1*0.25) / 0.75;
+  return mix(1.0, 0.8 + 0.4*g, a * nyquist(0.08) * (MICRO_GRAIN_MAX/0.45));
+}
+float microGrain(vec2 p){ return microGrain(p, vec2(0.0)); }
+float aaStep(float s, float lv){ float w=fwidth(s)*1.25+1e-6; return smoothstep(lv-w,lv+w,s); }
+float aaBand(float s, float lv, float hw){ float w=fwidth(s)*1.25+1e-6;
+  return smoothstep(lv-hw-w,lv-hw+w,s) - smoothstep(lv+hw-w,lv+hw+w,s); }
+float smin(float a,float b,float k){ float h=clamp(0.5+0.5*(b-a)/k,0.0,1.0); return mix(b,a,h)-k*h*(1.0-h); }
+/* ---- OKLab color helpers (vivid blends, designed grade — no grey mud) ---- */
+vec3 linToOklab(vec3 c){
+  float l=0.4122214708*c.r+0.5363325363*c.g+0.0514459929*c.b;
+  float m=0.2119034982*c.r+0.6806995451*c.g+0.1073969566*c.b;
+  float s=0.0883024619*c.r+0.2817188376*c.g+0.6299787005*c.b;
+  l=pow(max(l,0.0),1.0/3.0); m=pow(max(m,0.0),1.0/3.0); s=pow(max(s,0.0),1.0/3.0);
+  return vec3(0.2104542553*l+0.7936177850*m-0.0040720468*s,
+              1.9779984951*l-2.4285922050*m+0.4505937099*s,
+              0.0259040371*l+0.7827717662*m-0.8086757660*s);
+}
+vec3 oklabToLin(vec3 lab){
+  float l=lab.x+0.3963377774*lab.y+0.2158037573*lab.z;
+  float m=lab.x-0.1055613458*lab.y-0.0638541728*lab.z;
+  float s=lab.x-0.0894841775*lab.y-1.2914855480*lab.z;
+  l=l*l*l; m=m*m*m; s=s*s*s;
+  return vec3( 4.0767416621*l-3.3077115913*m+0.2309699292*s,
+              -1.2684380046*l+2.6097574011*m-0.3413193965*s,
+              -0.0041960863*l-0.7034186147*m+1.7076147010*s);
+}
+vec3 grade(vec3 c){               // OKLab split-tone: cool shadows → warm highlights + gentle sat
+  vec3 lab = linToOklab(max(c,0.0));
+  float t = smoothstep(0.2,0.8,lab.x);
+  vec2 ab = lab.yz + mix(vec2(0.0,-0.012), vec2(0.0,0.022), t) * uGrade.y;   // per-seed split-tone strength
+  ab *= 1.10 * mix(1.0,0.85,smoothstep(0.7,1.0,lab.x));
+  return oklabToLin(vec3(lab.x, ab));
+}
+// PERIODIC raised-cosine window on a cycle of length C (nearest wrapped distance) — used by the regime ladder so
+// the last regime crossfades into the first ACROSS the cycle seam instead of snapping (seamless zoom transitions).
+float regimeWinP(float z, float c, float S, float C){ float d = z - c; d -= C*floor(d/C + 0.5); float x = clamp(d/S,-1.0,1.0); return 0.5+0.5*cos(x*3.14159265); }
+vec3 envColor(vec3 rd){
+  float up=clamp(rd.z*0.5+0.5,0.0,1.0);
+  vec3 sky=mix(vec3(0.06,0.07,0.10), vec3(0.55,0.62,0.78), up);
+  vec3 key=normalize(vec3(0.5,0.6,0.62)), fil=normalize(vec3(-0.6,-0.2,0.5));
+  float k=pow(clamp(dot(rd,key),0.0,1.0),24.0), f=pow(clamp(dot(rd,fil),0.0,1.0),8.0);
+  return sky + k*vec3(1.0,0.95,0.82)*1.6 + f*vec3(0.4,0.55,0.7)*0.5;
+}
+float fresnelSchlick(float c, float F0v){ return F0v+(1.0-F0v)*pow(1.0-c,5.0); }
+
+// ===================== PREMIUM FINISH (single pass) =====================
+float luma(vec3 c){ return dot(c, vec3(0.2126,0.7152,0.0722)); }
+vec3 acesNark(vec3 x){
+  const float a=2.51,b=0.03,c=2.43,d=0.59,e=0.14;
+  return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+}
+float ign(vec2 p){ return fract(52.9829189*fract(dot(p, vec2(0.06711056,0.00583715)))); }
+float tpdfDither(vec2 frag){ return ign(frag) - ign(frag+113.0); }   // triangular PDF, mean 0
+// hue rotation around the achromatic axis (Rodrigues form) — the 配色戦略 axis. Cheap, self-contained,
+// does not touch the OKLab theme pipeline. a=0 is a no-op fast path (identity strategy).
+vec3 hueRot(vec3 c, float a){
+  if(abs(a) < 0.0015) return c;
+  const vec3 k = vec3(0.5773502691896258);
+  float ca = cos(a);
+  return c*ca + cross(k,c)*sin(a) + k*dot(k,c)*(1.0-ca);
+}
+vec3 post(vec3 col, vec2 p, float r, vec2 frag){
+  // (a) per-seed tone anchor — each world reads as ONE artwork
+  vec3 toneTint = 0.94 + 0.12*fract(uSeed.x*0.37 + vec3(0.0,0.37,0.74));
+  float expo    = 1.0 + 0.10*(fract(uSeed.y*0.61)-0.5);
+  col *= toneTint * expo;
+  col = grade(col);                        // OKLab split-tone grade (before tonemap)
+  // (b) bloom: cheap thresholded soft-add (no blur pass)
+  float bl = luma(col);
+  float knee = smoothstep(0.75, 1.35, bl);
+  col += col * knee * (uExport>0.5 ? uGrade.z*1.6 : uGrade.z) * uFinishTone.w;   // per-seed bloom × finish bloomMul (export keeps its 1.6x boost)
+  // (c) filmic ACES tonemap (HDR → LDR)
+  col = acesNark(col * 1.05);
+  // (d) S-curve + saturation shaping (amount from finish preset — was fixed 0.34)
+  col = clamp(col, 0.0, 1.0);
+  col = mix(col, col*col*(3.0-2.0*col), uFinishTone.x);
+  float Ls = luma(col);
+  col = mix(vec3(Ls), col, uGrade.x * uFinishTone.z);   // per-seed saturation × finish satMul
+  col = mix(vec3(Ls), col, 1.0 + 0.10*(1.0-Ls));
+  // (d2) palette strategy (seed-derived hue relationship): rotate around achromatic axis + optional mono
+  col = clamp(hueRot(col, uPalette.x), 0.0, 1.0);
+  col = mix(col, vec3(luma(col)), uPalette.y);
+  // (wx) EFFECT WEATHER (v53 / v55c 緩和): 画面エフェクト(CA/粒状/走査線)が探索に応じて緩やかに移り変わる。
+  // uLogZoom + uBiomeCoord(=center*BIOME_F) + uSeed の純関数 → 座標で完全再現(claim/export parity)。周波数は
+  // ズームループ 18 lz の整数分割(2π·k/18)= wrap 跨ぎで厳密連続。
+  // v55c: ユーザー「段差を消して滑らかに」— (1) ポスタライズ天候(7段量子化=段差でカクつく元)を全廃、
+  // (2) 残り3ch は smoothstep を広く・周波数 k を低く・強度を下げて、平坦な暗い場でも「洗い出しの段差感」を消す
+  // (ズーム1ジェスチャ中に急に wash-in しない=シームレス)。
+  float wxScan, wxGrain, wxCA;
+  {
+    const float WXF = 6.28318530718 / 18.0;                       // 1 = ループ1周で1周期
+    float bc1 = dot(uBiomeCoord, vec2(0.21, -0.13));              // パン(広域ほど効く)でも天候が動く
+    float bc2 = dot(uBiomeCoord, vec2(-0.11, 0.24));
+    wxScan  = step(0.45, fract(uSeed.y*3.17)) * smoothstep(0.30, 0.95, sin(uLogZoom*WXF*1.3 + bc1 + uSeed.x*5.1));
+    wxGrain = step(0.40, fract(uSeed.x*4.73)) * smoothstep(0.25, 0.92, sin(uLogZoom*WXF*1.7 + bc2 + uSeed.y*7.3));
+    wxCA    = smoothstep(0.30, 0.95, sin(uLogZoom*WXF*2.2 + bc2*0.6 + uSeed.y*11.9));
+  }
+  // (e) chromatic aberration toward edges (× finish caMul + weather の加算床 → 全世界に時々 CA が訪れる)
+  float ca = r*r * (uExport>0.5 ? 0.020 : 0.012) * (uFinishTex.x + 0.6*wxCA);
+  col.r *= 1.0 + ca;  col.b *= 1.0 - ca*0.85;
+  col = clamp(col, 0.0, 1.0);
+  // (f) micro / local-contrast (hue-preserving; amount from finish preset — was fixed 0.07)
+  float Lc = luma(col); float hp = Lc - 0.5;
+  col += (Lc>0.001 ? col/Lc : vec3(1.0)) * hp * uFinishTone.y;
+  col = clamp(col, 0.0, 1.0);
+  // (g) vignette + atmospheric haze
+  float vig = smoothstep(1.32, 0.28, r);
+  col *= mix(uGrade.w, 1.0, vig);   // per-seed vignette depth
+  col = mix(col, col+vec3(0.04,0.05,0.07), (1.0-vig)*0.5);
+  // (g2) screen-print halftone: 45°回転のドットスクリーン(giclee/copper/riso のみ)。
+  // v55c: ユーザー「網点を静的固定」— ドット半径を luma 追従(= フロー animation で脈動しカクつく元)から
+  // **固定半径**に変更 = 完全静止の印刷スクリーンテクスチャ。screen-locked・resolution-relative(uDotPitch=
+  // renderHeight/55)。uFinishTex.z の分岐は UNIFORM 制御フローなので内側の fwidth も安全(非一様分岐は不可)。
+  if(uFinishTex.z > 0.001){
+    float ang = 0.7854 + (fract(uSeed.x*0.531)-0.5)*0.5;   // ~45° ± per-seed tilt
+    vec2  rp  = mat2(cos(ang),-sin(ang),sin(ang),cos(ang)) * frag;
+    vec2  cf  = fract(rp/uDotPitch) - 0.5;
+    float dpx = length(cf) * uDotPitch;                     // px distance to the cell's dot centre
+    float rl  = uDotPitch * 0.40;                           // FIXED radius = 時間依存ゼロ(静的網点)
+    float aaD = fwidth(dpx)*1.2 + 0.9;
+    float dotM = 1.0 - smoothstep(rl-aaD, rl+aaD, dpx);     // 1 inside the dot
+    col *= mix(1.0 - 0.30*uFinishTex.z, 1.0 + 0.05*uFinishTex.z, dotM);   // halftone strength from finish preset
+  }
+  // (g2b 廃止 v55c): 探索連動ドット帯(ズームで sin により洗い出される網点)を全廃。ズーム animation で
+  // 出没する=「カクカク」の主因、というユーザー報告により削除。網点の質感は上の静的 g2 が担う。
+  // (g3) RETRO PIXEL finish: coarse colour quantisation + per-block ordered dither — the limited-palette
+  // stepping and dithered gradients of old game hardware. Runs only in pixel mode (uPixel>1.5); the block
+  // snap itself happens at the top of main() so this only shapes the colour.
+  if(uPixel > 1.5){
+    const float LV = 24.0;                                  // levels per channel
+    float dn = ign(floor(frag/uPixel)*vec2(1.0,1.371));     // stable per-block dither value
+    col += (dn - 0.5) * (0.9/LV);
+    col = clamp(floor(col*LV + 0.5)/LV, 0.0, 1.0);
+  }
+  // (g4) finish posterize: limited-palette stepping WITHOUT the chunky block-snap (uPixel) — the risograph /
+  // screen-print look. Screen-locked ordered dither. Only when not already in retro pixel mode.
+  if(uPixel < 1.5 && uFinishTex.w > 1.5){
+    float LVf = uFinishTex.w;
+    float dnf = ign(frag*vec2(1.0,1.371));
+    col += (dnf - 0.5) * (0.9/LVf);
+    col = clamp(floor(col*LVf + 0.5)/LVf, 0.0, 1.0);
+  }
+  // (g4b 廃止 v55c): weather ポスタライズ(7段量子化)を全廃。平坦な場でズーム連動の段差=カクつきの主因、
+  // というユーザー報告により削除。限定色スクリーンは finish の riso 等(上の g4)が担う。
+  // (h)(i) film grain + shimmer — OFF in retro pixel mode: with block-quantized coords they would read as
+  // per-block flicker/dirt, not film. The retro look's dither is the ordered per-block one in (g3).
+  if(uPixel < 1.5){
+    float gn = ign(frag*1.371 + floor(uFlow*8.0));
+    // fade grain when down-rendering (anti upscaled-pixel) AND at extreme zoom where the field is flat
+    // (otherwise the film grain reads as a static speckle "pixel" carpet on the smooth deep-zoom forms).
+    float gAmt = (uExport>0.5 ? 0.014 : 0.022) * uFinishTex.y * (1.0 + 0.9*wxGrain)   // weather: 粒状が時々フィルム調に濃くなる(v55c 緩和)
+               * (1.0 - abs(luma(col)-0.5)*1.6)
+               * grainVis() * (1.0 - smoothstep(27.0, 33.0, uLogZoom));
+    col += (gn-0.5) * gAmt;
+    // slow shimmer (subtle life)
+    col *= 1.0 + 0.012*sin(uFlow*1.7 + r*6.0);
+  }
+  // (h2) CRT scanlines — screen-locked, resolution-relative (~240 lines tall); print-face effect like grain/halftone
+  // weather: crt 以外の世界にも走査線が時々薄く訪れる(seed の uScan が常に優先)
+  float scanAmt = max(uScan, 0.30*wxScan);
+  if(scanAmt > 0.001){
+    float phase = frag.y * 6.28318530718 * 240.0 / uResY;
+    col *= 1.0 - scanAmt * (0.5 - 0.5*cos(phase)) * 0.55;
+  }
+  // (hover) v56: マウスホバー位置を少しだけハイライト(鑑賞用・書き出しOFF)。p = 画面オフセット(cc-space)。
+  if(uCursorFX > 0.0){
+    float hi = uCursorFX * (1.0 - smoothstep(0.0, 0.16, length(p - uCursor)));
+    col *= 1.0 + 0.12*hi;          // 中心 +12% の穏やかなリフト
+    col += 0.045*hi;               // 暗部でも分かる微かな加算グロー
+  }
+  // (j) DITHER — ABSOLUTE LAST, 1 LSB TPDF (kills banding)
+  col += tpdfDither(frag) * (1.0/255.0);
+  return clamp(col, 0.0, 1.0);
+}
+
+/* ================= generators (sample SMALL residual coords) ================= */
+vec2 genFlow(vec2 p, float t){
+  // PERF: q/r are STEERING vector fields for the domain warp — their high octaves are hidden entirely by the
+  // warped lookup (IQ domain-warp guidance), so cap them at 3 octaves LIVE. The final height fbm keeps full
+  // (LOD-governed) octaves, and export renders all taps at full sharpness via the uExport bypass.
+  float wOct = (uExport > 0.5) ? autoOctaves() : min(autoOctaves(), 3.0);
+  vec2 q=vec2(fbm_p(p+0.65*t, wOct), fbm_p(p+vec2(5.2,1.3)-0.55*t, wOct));
+  vec2 r=vec2(fbm_p(p+uShape.z*q+vec2(1.7,9.2)+0.45*t, wOct), fbm_p(p+uShape.z*q+vec2(8.3,2.8)-0.40*t, wOct));
+  float h = fbm(p+uShape.w*r)*0.5+0.5;
+  float amp = detailPx(0.5);
+  if(amp > 0.003){
+    float fil = subRidge(p*8.0 + r*4.0, 3);           // fine filament striation
+    h = mix(h, h*(0.6+0.7*fil), amp*nyquist(0.08)*0.5);
+  }
+  return vec2(h, 1.0);
+}
+// one Worley octave on a fold-precise lattice. disp = SAME world-space edge displacement for both octaves (D7).
+vec2 worleyOct(GenCell c, float jitter, vec2 disp){
+  vec2 fp = c.f + disp;
+  float f1=8.0,f2=8.0;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
+    ivec2 g=ivec2(i,j);
+    vec2 o=mix(vec2(0.5), 0.5+0.5*hashCellN(c.cell,g), jitter);
+    vec2 d=vec2(g)+o-fp; float dd=dot(d,d);
+    if(dd<f1){ f2=f1; f1=dd; } else if(dd<f2){ f2=dd; }
+  }
+  f1=sqrt(f1); f2=sqrt(f2);
+  return vec2(f1, 1.0 - aaStep(f2-f1, 0.06));
+}
+// scale-following Worley: cells stay screen-sized at EVERY depth; cross-blend two octaves so they SUBDIVIDE seamlessly.
+vec2 genWorley(float jitter){
+  float edgeAmt = fracAmt(1.0, 0.06);
+  // PERF: skip the 6-hash displacement when its amplitude is sub-perceptual (≤0.001 cell units)
+  vec2 disp = (edgeAmt > 0.003)
+    ? clamp(fracDispVec(0.6) * (FRAC_EDGE_AMP * edgeAmt) * uFoldScaleG, -0.45, 0.45)
+    : vec2(0.0);
+  vec2 a = worleyOct(genCell(GFB_WOR, 0), jitter, disp);
+  // PERF: weight first, then skip octave b's 9-cell loop when its blend weight is negligible (home-band /
+  // shallow zoom where scaleFollowAmt≈0). mix(a,b,wbl) with wbl<0.004 is sub-LSB identical to a. Two-sided:
+  // octaves still cross-blend on deep zoom IN and OUT (wbl rises), so seamless subdivision is preserved.
+  float wbl = (uGenFrac > 0.003) ? smoothstep(0.0,1.0,uGenFrac) * scaleFollowAmt() * crossBlendAmt() : 0.0;
+  vec2 b = (wbl > 0.004) ? worleyOct(genCell(GFB_WOR, 1), jitter, disp) : a;
+  return mix(a, b, wbl);
+}
+vec2 genLines(vec2 p, int style, float spacing, float widthPx){
+  float hw = widthPx*worldPx()*0.5;
+  float m  = microAmt();
+  if(style==0){
+    float s=fbm01(p)*spacing; float ring=fract(s); float d=min(ring,1.0-ring);
+    float L=1.0-aaStep(d, hw/uViewHeight*8.0);
+    if(m>0.003){ float bundle=aaBand(fract(s*5.0),0.5,0.22); L=mix(L, L*0.5+0.5*L*bundle, m); }
+    return vec2(L,L);
+  }
+  if(style==1){
+    float ang=0.7+1.3*fbm(p*0.4); vec2 rr=mat2(cos(ang),-sin(ang),sin(ang),cos(ang))*p;
+    float base=rr.y/spacing*4.0;
+    float jw = m>0.003 ? 0.18*(0.6+0.8*fbm01(vec2(floor(base), rr.x*2.0))) : 0.18;   // weight jitter
+    float L=aaBand(fract(base),0.5, jw);
+    if(m>0.003) L=max(L, aaBand(fract(base*3.0),0.5,0.10)*m*0.6);                     // interleaved finer strokes
+    return vec2(L,L);
+  }
+  float phase=fbm01(p*0.8)*spacing;
+  float L=aaBand(fract(phase),0.5, 0.16);
+  if(m>0.003) L=max(L, aaBand(fract(phase*2.0),0.5,0.10)*m*0.5);
+  return vec2(L,L);
+}
+vec2 truchetOct(GenCell c, float lineW){
+  float flip=step(0.5, fract(hashCellN(c.cell,ivec2(0)).x*0.5+0.5));
+  vec2 ca = (flip<0.5) ? c.f : vec2(c.f.x, 1.0-c.f.y);
+  float d1=abs(length(ca)-0.5), d2=abs(length(ca-vec2(1.0))-0.5);
+  float d = smin(d1, d2, 0.15);
+  return vec2(0.5 - d, 1.0 - aaStep(d, lineW*worldPx()));
+}
+// scale-following Truchet: arcs connect into ribbons that subdivide on zoom (cross-blend).
+vec2 genTruchet(float lineW){
+  vec2 a = truchetOct(genCell(GFB_TRU,0), lineW);
+  float wbl = (uGenFrac > 0.003) ? smoothstep(0.0,1.0,uGenFrac)*scaleFollowAmt()*crossBlendAmt() : 0.0;   // skip octave b when negligible (preserves deep-zoom subdivision)
+  vec2 b = (wbl > 0.004) ? truchetOct(genCell(GFB_TRU,1), lineW) : a;
+  vec2 r = mix(a,b,wbl);
+  float amp = detailPx(1.0);
+  if(amp>0.003){ r.x += 0.15*amp*(subFbm(gP0fine*4.0)-0.5); }            // tile-face grain (fine base)
+  return r;
+}
+float sdCircle(vec2 p,float r){ return length(p)-r; }
+float sdBox(vec2 p,vec2 b){ vec2 d=abs(p)-b; return length(max(d,0.0))+min(max(d.x,d.y),0.0); }
+float sdfOct(GenCell c, float meltK){
+  vec2 fp = c.f - 0.5; float d=1e9;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
+    ivec2 g=ivec2(i,j);
+    vec2 hh = hashCellN(c.cell,g);                 // [-1,1], matches original hash22 remap
+    vec2 o  = hh*0.7;
+    float r = 0.18+0.22*fract(hh.y*0.5+0.5);
+    float pick = fract(hh.x*0.5+0.5);
+    vec2 lp = fp-vec2(g)-o;
+    float prim = pick<0.5 ? sdCircle(lp,r) : sdBox(lp,vec2(r,r*0.7));
+    d = smin(d, prim, meltK);
+  }
+  return d;
+}
+// scale-following melted shapes: shapes subdivide into nested melted shapes on zoom (cross-blend).
+vec2 genSDF(float meltK){
+  float d0 = sdfOct(genCell(GFB_SDF,0), meltK);
+  float wbl = (uGenFrac > 0.003) ? smoothstep(0.0,1.0,uGenFrac)*scaleFollowAmt()*crossBlendAmt() : 0.0;   // skip octave b when negligible (preserves deep-zoom subdivision)
+  float d1 = (wbl > 0.004) ? sdfOct(genCell(GFB_SDF,1), meltK) : d0;
+  float d = mix(d0, d1, wbl);
+  float fill=smoothstep(0.02,-0.02,d), edge=1.0-smoothstep(0.0,0.035,abs(d));
+  return vec2(fill, edge);
+}
+vec2 genContour(vec2 p, float freq, float lineW){
+  float featW = 1.0/max(freq,0.5);
+  float meander = fracAmt(featW, featW*0.12);
+  // PERF: the meander displacement + waver share ONE fracDisp value (the old two calls passed different dead
+  // p args but were bit-identical), and all of it is skipped when the amplitude is sub-perceptual.
+  bool doM = meander > 0.003;
+  float fd = doM ? fracDisp() : 0.0;
+  float fv = doM ? fbm(p + fracDispVec(0.6) * (FRAC_MEANDER*meander)) : fbm(p);   // iso-lines meander → fjords on zoom
+  float ph = fv*freq + meander*fd*0.20;                                  // hand-drawn waver
+  float prim = 1.0-aaStep(abs(fract(ph)-0.5), lineW);
+  float subW = featW*0.5;
+  float sub  = 1.0-aaStep(abs(fract(ph*2.0)-0.5), lineW*0.6);            // hairline threads between primaries
+  float L = max(prim, meander*sub*nyquist(subW)*0.7);
+  float dash = 0.5+0.5*sin(fv*freq*40.0 + fd*3.0);
+  L *= mix(1.0, 0.4+0.6*dash, meander*nyquist(subW*0.3)*0.6);            // breaks into surveyed dashes deep in
+  return vec2(fv*0.5+0.5, L);
+}
+vec2 gridOct(GenCell c, float blend){
+  vec2 qd = c.f + blend*uFreq.w*vec2(subFbm(c.f*3.0), subFbm(c.f*3.0+3.1));   // warp from same gen lattice (D8); gain per-seed (was fixed 2.0)
+  vec2 cell=fract(qd)-0.5; float box=max(abs(cell.x),abs(cell.y));
+  return vec2(box, aaStep(box,0.42));
+}
+// scale-following grid: lattice dissolves into finer lattice on zoom (cross-blend).
+vec2 genGrid(float blend){
+  vec2 a = gridOct(genCell(GFB_GRID,0), blend);
+  float wbl = (uGenFrac > 0.003) ? smoothstep(0.0,1.0,uGenFrac)*scaleFollowAmt()*crossBlendAmt() : 0.0;   // skip octave b when negligible (preserves deep-zoom subdivision)
+  vec2 b = (wbl > 0.004) ? gridOct(genCell(GFB_GRID,1), blend) : a;
+  return mix(a,b,wbl);
+}
+vec2 genStripe(vec2 p, float fA, float fB, float ang){
+  vec2 a=mat2(cos(ang),-sin(ang),sin(ang),cos(ang))*p;
+  float warp = fbm(p*0.5)*2.0;
+  float s1=sin(a.x*fA + warp), s2=sin(dot(p,vec2(0.7,0.7))*fB);
+  float h = 0.5+0.5*s1*s2;
+  float band=aaBand(0.5+0.5*s1,0.5,0.18);
+  float bandWorld = 6.2831/max(fA,0.5);
+  float amp = detailPx(bandWorld);
+  if(amp > 0.003){
+    vec2 al = a + 0.15*vec2(subFbm(p*3.0), subFbm(p*3.0+9.0));
+    float fiberW = bandWorld*0.06;
+    float fiber  = 0.5+0.5*sin(al.y*(6.2831/fiberW) + s1*3.0);      // brushed fibres along the band
+    float micro  = 0.5+0.5*sin(a.x*fA*5.0 + subFbm(p*2.0)*4.0);     // nested micro-bands
+    float grain  = subRidge(p*5.0, 2);
+    float det = mix(fiber, micro, 0.5)*0.7 + grain*0.3;
+    float g = amp*nyquist(fiberW);
+    h    = mix(h, h*det, g*0.55);
+    band = mix(band, band*(0.6+0.5*fiber), g*0.5);
+  }
+  return vec2(h, band);
+}
+
+/* ============================================================
+   THE FIELD — anchored + parent-conditioned.
+   rel    = SMALL residual world coords.
+   baseH  = coherent windowed FBM height (carries descent coherence).
+   parent = coarse "where am I" value (gates the child sub-world).
+   D      = detail level.
+   ============================================================ */
+vec3 computeFieldAnchored(vec2 rel, float baseH, float parent, float D, float biomeID){
+  gBase = uCellBase;
+  float t = uFlow * uTone.x;
+  vec2  p = rel + uSeed;
+
+  // --- SCALE LADDER: driven by D, SHIFTED per-place by the parent value ---
+  // PERIODIC 5-cell partition of unity (seamless): 5 raised-cosine windows spaced S with half-width S on a
+  // cycle of 5S sum to exactly 1 for ANY S. CYCLE=18 (S=3.6) matches the zoom-LOOP span (18 octaves) EXACTLY,
+  // so the ladder state at the loop's deep end (D=11) and wide end (D=-7) is IDENTICAL — the wrap crossfade
+  // blends the same regime mix (the old 17.5 cycle left a 0.5 rotation ≈ up to 0.21 weight jump at the seam).
+  // The +7.0 phase keeps regime peaks near their pre-v28 depths (now D = {-7,-3.4,0.2,3.8,7.4}, ≤0.4 shift).
+  float CYCLE = 18.0;
+  float ladderShift = (parent - 0.5) * 6.0;
+  float zc = mod(D + 7.0 + uRegimePhase + ladderShift, CYCLE);   // uRegimePhase: per-seed ladder rotation (variety)
+  float w0 = regimeWinP(zc, 0.0, 3.6, CYCLE);
+  float w1 = regimeWinP(zc, 3.6, 3.6, CYCLE);
+  float w2 = regimeWinP(zc, 7.2, 3.6, CYCLE);
+  float w3 = regimeWinP(zc,10.8, 3.6, CYCLE);
+  float w4 = regimeWinP(zc,14.4, 3.6, CYCLE);
+
+  // node-ness: bright coherent parent => rich child world; void => stays sparse
+  float nodeness = smoothstep(0.45, 0.78, parent);
+
+  float regionLineGate = smoothstep(0.40, 0.62, fbm01(rel*0.4 + uSeed));  // continuous → no hard regional pop
+  // per-seed generator PERSONALITY (uGenA/uGenB, R 0.65..1.5): each seed favours a different mix of the seven
+  // character generators. wFlow's 0.12 base floor stays UNSCALED — it anchors the 凪 coherence everywhere.
+  // gsum renormalizes below, so the partition-of-unity and the sub-perceptual skip gates keep working as-is.
+  float wFlow   = 0.12 + w1*1.0 + w0*0.6;
+  float wWorley = w3*0.9*(0.6+0.8*biomeID) * mix(0.5,1.0,nodeness) * uGenA.x;
+  float wSDF    = (w3*0.7 + w0*0.3)        * mix(0.3,1.0,nodeness) * uGenA.y;
+  float wTru    = w4*0.9                    * nodeness             * uGenA.z;
+  float wGrid   = w4*0.6*smoothstep(0.45,0.75,biomeID) * nodeness  * uGenA.w;
+  float wCont   = w2*0.85                                          * uGenB.x;
+  float wStripe = (w2*0.4 + w4*0.2)                                * uGenB.y;
+  float wLines  = (w4*0.5 + w2*0.4)*regionLineGate * mix(0.4,1.0,nodeness) * uGenB.z;
+  float gsum = wFlow+wWorley+wSDF+wTru+wGrid+wCont+wStripe + 1e-4;
+  // PERF: smoothly fade out (→ skip computing) generators whose normalized contribution is sub-perceptual
+  // (<~2% of gsum). The smoothstep rolloff means a generator never pops on/off as you pan/zoom across a
+  // regime edge; far regimes are already hard-zeroed by regimeWin, this trims the faint overlapping tails.
+  float gth = gsum * 0.02;
+  wWorley *= smoothstep(gth*0.35, gth, wWorley);
+  wSDF    *= smoothstep(gth*0.35, gth, wSDF);
+  wTru    *= smoothstep(gth*0.35, gth, wTru);
+  wGrid   *= smoothstep(gth*0.35, gth, wGrid);
+  wCont   *= smoothstep(gth*0.35, gth, wCont);
+  wStripe *= smoothstep(gth*0.35, gth, wStripe);
+  wLines  *= smoothstep(gth*0.35, gth, wLines);
+
+  // hatch STYLE crossfades over zoom (was int(floor(D)) → hard style switch at every integer D). Hold each
+  // style for the first half of its D-step, then smoothly hand over to the next on a cycle of 3 → no snap.
+  float Ds = mod(D, 3.0);
+  int   lineStyleA = int(Ds);
+  int   lineStyleB = int(mod(float(lineStyleA + 1), 3.0));
+  float lineStyleF = smoothstep(0.72, 1.0, fract(Ds));   // hold each style ~72% of its step, quick smooth hand-over (keeps 2nd genLines off most of the time)
+  vec2 gFlow = genFlow(contCoord(p, GFB_FLOW), t);
+  vec2 gWor  = (wWorley>0.001)? genWorley(clamp(biomeID*uFreq.x, 0.25, 1.0))             : vec2(0.5,0.0);
+  vec2 gSDF  = (wSDF>0.001)?    genSDF(uTone.w*(0.7+0.6*uEnergy))                        : vec2(0.5,0.0);
+  vec2 gTru  = (wTru>0.001)?    genTruchet(uGenB.w)                                      : vec2(0.5,0.0);
+  vec2 gGrid = (wGrid>0.001)?   genGrid(0.5+0.5*(1.0-smoothstep(0.45,0.75,biomeID)))      : vec2(0.5,0.0);
+  vec2 gCont = (wCont>0.001)?   genContour(contCoord(rel, GFB_CONT), uFreq.z, 1.2*worldPx()) : vec2(0.5,0.0);
+  vec2 gStr  = (wStripe>0.001)? genStripe(contCoord(rel, GFB_STR), uFreq.y, uFreq.y*0.7, biomeID*6.28) : vec2(0.5,0.0);
+  vec2 gLin  = vec2(0.0,0.0);
+  if(wLines>0.001){ vec2 lco = contCoord(rel, GFB_LIN);
+    vec2 lA = genLines(lco, lineStyleA, uShape.y, uShape.x);
+    gLin = (lineStyleF > 0.004) ? mix(lA, genLines(lco, lineStyleB, uShape.y, uShape.x), lineStyleF) : lA; }
+
+  // generators add CHARACTER; the windowed FBM keeps descent COHERENT
+  float Hgen = ( gFlow.x*wFlow + gWor.x*wWorley + gSDF.x*wSDF + gTru.x*wTru
+               + gGrid.x*wGrid + gCont.x*wCont + gStr.x*wStripe ) / gsum;
+  // On the zoom-IN edge generators fade when their cells go sub-pixel (octave-window base takes over).
+  // On zoom-OUT they are scale-following (contCoord→genCoord, genCell) so they must STAY alive and
+  // carry the macro structure — otherwise the field collapses to a flat dead wash. Two-sided gate.
+  float genFade = max(smoothstep(2.0, 8.0, featurePx(1.0)), 1.0 - smoothstep(-6.0, -4.0, uLogZoom));   // [[scaleFollowAmt zoom-out twin]]
+  float scaleFollow = max(smoothstep(2.0, 6.0, octavePhase()), 1.0 - smoothstep(-6.0, -4.0, uLogZoom));   // ease generators back slightly at depth (anti-mud); two-sided so the baseH:Hgen ratio matches at BOTH loop ends (wrap-seamless)
+  float Hout = mix(baseH, Hgen, mix(0.6, 0.45, scaleFollow)*genFade);
+
+  float ink = clamp( gLin.y*wLines + gTru.y*wTru + gWor.y*wWorley*0.6
+                   + gSDF.y*wSDF + gCont.y*wCont + gGrid.y*wGrid + gStr.y*wStripe*0.5, 0.0,1.0) / max(gsum,1.0);
+  ink *= genFade;
+  return vec3(Hout, ink, biomeID);
+}
+
+/* ================= unified cosmic aesthetics (6 themes, smoothly blended) =================
+   order: 0 nebula · 1 metal · 2 sumi-e · 3 crystal · 4 biolum · 5 strata
+   blended by a partition-of-unity over a theme axis (place × zoom): a new look
+   always FADES in from its neighbour — never pops. */
+// PERF: the 6 theme palettes are stored PRE-CONVERTED to OKLab (baked at shader-build time by JS from the
+// authoritative linear values in THEME_LIN below). The per-pixel blend then only mixes in Lab and converts
+// back with cheap cubes (oklabToLin) — eliminating 12 linToOklab calls = 36 pow() per pixel.
+//__THEME_LAB__
+// 24 biomes (v47: 16-19 参照駆動 / v56: 20-23 顕微鏡・工業の追加, designs/WORKLOG v56):
+// 0 nebula · 1 metal · 2 sumi-e · 3 crystal · 4 biolum · 5 strata · 6 jade-shallows · 7 magma ·
+// 8 aurora-night · 9 desert-sandstone · 10 moss-floor · 11 rust-verdigris · 12 glacier · 13 obsidian-gold ·
+// 14 blossom-wash · 15 abyssal-vents · 16 cumulus(雲海) · 17 swell(外洋) · 18 marine-snow(深海光柱) · 19 spiral-galaxy(渦巻銀河)
+// 20 microscopy-cells(顕微鏡細胞) · 21 silicon-die(半導体) · 22 woven-textile(織物) · 23 megacity-noir(俯瞰都市)
+// v56 の 20-23 は「技法オーバーレイ」= AMTD の各チャネルで発現(x=細胞/y=半導体/z=織物/w=都市)。
+const vec4 AMTA[24] = vec4[24](   // metal, ink, star, glow
+  vec4(0.0,0.00,1.00,1.00), vec4(1.0,0.12,0.25,0.10), vec4(0.0,0.95,0.00,0.00), vec4(0.45,0.50,0.40,0.25),
+  vec4(0.0,0.25,0.35,0.90), vec4(0.0,1.00,0.00,0.00), vec4(0.0,0.55,0.00,0.35), vec4(0.20,0.30,0.00,0.85),
+  vec4(0.0,0.10,0.90,0.90), vec4(0.0,0.50,0.00,0.00), vec4(0.0,0.40,0.20,0.30), vec4(0.55,0.35,0.00,0.10),
+  vec4(0.15,0.55,0.35,0.0), vec4(0.70,0.25,0.30,0.25), vec4(0.0,0.80,0.00,0.12), vec4(0.0,0.20,0.50,0.60),
+  vec4(0.0,0.00,0.00,0.20), vec4(0.0,0.15,0.00,0.30), vec4(0.0,0.10,0.60,0.55), vec4(0.0,0.05,1.00,0.90),
+  vec4(0.0,0.10,0.00,0.15), vec4(0.1,0.20,0.00,0.35), vec4(0.0,0.05,0.00,0.12), vec4(0.0,0.25,0.00,0.20));
+const vec4 AMTB[24] = vec4[24](   // hypso, fill, contrast, -
+  vec4(0.0,0.15,1.05,0.0), vec4(0.0,0.95,1.10,0.0), vec4(0.0,0.92,1.18,0.0), vec4(0.0,0.90,1.12,0.0),
+  vec4(0.0,0.40,1.00,0.0), vec4(1.0,1.00,1.05,0.0), vec4(0.0,0.70,1.10,0.0), vec4(0.0,0.35,1.15,0.0),
+  vec4(0.0,0.00,1.05,0.0), vec4(0.55,1.00,1.08,0.0), vec4(0.0,0.60,1.05,0.0), vec4(0.0,0.55,1.10,0.0),
+  vec4(0.0,0.90,1.12,0.0), vec4(0.0,0.20,1.20,0.0), vec4(0.0,0.95,1.05,0.0), vec4(0.0,0.15,1.10,0.0),
+  vec4(0.0,0.95,1.06,0.0), vec4(0.0,0.80,1.12,0.0), vec4(0.0,0.25,1.06,0.0), vec4(0.0,0.10,1.08,0.0),
+  vec4(0.0,0.90,1.10,0.0), vec4(0.0,0.90,1.15,0.0), vec4(0.0,0.90,1.12,0.0), vec4(0.0,0.85,1.12,0.0));
+// AMTC (v46): reference-driven "3D-ish" technique amounts per biome — billowRim(x), waveFoam(y),
+// deepScatter(z), dustLane(w). Partition-blended like AMTA/AMTB so biome borders stay seamless.
+// Art direction source: designs/brand/reference/ (GLSL reproduces the LOOK — no image textures, so the
+// infinite zoom and the 非AI/deterministic brand stay intact).
+const vec4 AMTC[24] = vec4[24](
+  vec4(0.25,0.00,0.00,0.85), vec4(0.00,0.00,0.00,0.00), vec4(0.00,0.00,0.00,0.00), vec4(0.15,0.00,0.00,0.00),
+  vec4(0.00,0.00,0.85,0.00), vec4(0.00,0.00,0.00,0.00), vec4(0.00,0.90,0.15,0.00), vec4(0.00,0.00,0.00,0.00),
+  vec4(0.00,0.00,0.25,0.55), vec4(0.00,0.00,0.00,0.00), vec4(0.00,0.00,0.00,0.00), vec4(0.00,0.00,0.00,0.00),
+  vec4(0.55,0.00,0.00,0.00), vec4(0.00,0.00,0.00,0.00), vec4(0.70,0.00,0.00,0.00), vec4(0.00,0.00,0.95,0.00),
+  vec4(0.95,0.00,0.00,0.00), vec4(0.10,1.00,0.25,0.00), vec4(0.00,0.00,1.00,0.00), vec4(0.30,0.00,0.00,1.00),
+  vec4(0.00,0.00,0.00,0.00), vec4(0.00,0.00,0.00,0.00), vec4(0.00,0.00,0.00,0.00), vec4(0.00,0.00,0.00,0.00));
+// AMTD (v56): 顕微鏡・工業バイオームの技法オーバーレイ量。x=細胞膜 / y=半導体配線 / z=織物 / w=俯瞰都市。
+// 20-23 の各バイオームが自分のチャネルだけ 1.0(他は 0)。partition-blend で境界シームレス(AMTA/B/C と同型)。
+const vec4 AMTD[24] = vec4[24](
+  vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0),
+  vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0),
+  vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0),
+  vec4(1.0,0.0,0.0,0.0), vec4(0.0,1.0,0.0,0.0), vec4(0.0,0.0,1.0,0.0), vec4(0.0,0.0,0.0,1.0));
+
+vec3 hypsoRamp(float h){
+  vec3 c0=vec3(0.12,0.13,0.32), c1=vec3(0.16,0.45,0.45), c2=vec3(0.74,0.60,0.33), c3=vec3(0.95,0.92,0.80);
+  vec3 a=mix(c0,c1,smoothstep(0.0,0.45,h));
+  vec3 b=mix(c2,c3,smoothstep(0.65,1.0,h));
+  return mix(a,b,smoothstep(0.40,0.70,h));
+}
+// returns (intensity, colour-temperature jitter in [-0.5,0.5]).
+// v52: SCALE-FOLLOWING star field — 旧実装は world 固定格子(rel*36, starOct を 0 で clamp)だったため
+// ズームインで細分化が止まり、星がただ拡大されて巨大なぼけ玉になった(「丸い光がぼやけて見える」:
+// セル画面サイズ = 2^octavePhase/36 px → lz+3 で ~74px、lz+6 で ~600px)。FINE fold 基底(uLref2 が
+// octavePhase に追従)上の 3 オクターブ階層に再構築: fracDispVec と同じ partition-of-unity 窓 {1-g, 1, g}
+// で星セルは常に画面上 ~6-44px 帯に収まり、潜るほど微光星が下から湧き続ける = 顕微鏡/望遠鏡の解像感。
+// セル演算は gnoiseFoldB と同一契約(C1: GPU で大座標を floor しない / H1: hash22cellU uvec2 mod 2^32)。
+// 明るさ階層: 粗いオクターブほど稀で明るい(巨星)、細かいほど多くて微光 — power-law の星数分布。
+vec2 starField(){
+  float gWin = clamp(octavePhase() - float(uLref2) - 2.0, 0.0, 1.0);
+  // v55/v55b: 星雲/星団 — 星の格子より粗いノイズで密度を変調し、天の川の星帯や球状星団の「塊」を作る
+  // (一様スペックルの空 → 疎な空に時々濃い星の川/団)。**WINDOW 基底(gP0win/uFoldCell)を使う**: これは
+  // gP0fine より粗い octave に anchored された別 fold 基底で、加算オフセットのみ = fold 相殺が保たれ pan/wrap
+  // でシームレス。v55 初版は gP0fine*0.35(分数倍)で fold 相殺を破り、パン/wrap のたびに星密度が飛んでいた
+  // (レビュー HIGH)。分数倍は fold の <<i シフトと合成できない(GFB_* が power-of-two のみなのと同じ制約)。
+  float cloud = smoothstep(0.28, 0.84, gnoiseFoldB(0, gP0win + vec2(11.3, 4.7), uFoldCell)*0.5 + 0.5);
+  float ptSum = 0.0, tintSum = 0.0;
+  for(int j=0;j<3;j++){
+    float w = (j==0) ? (1.0-gWin) : (j==1) ? 1.0 : gWin;   // 入る最細タップは 0 から溶け込む(ポップなし)
+    if(w < 0.004) continue;
+    vec2 scaled = gP0fine * exp2(float(j));                // P0 は小さい → floor 厳密(gnoiseFoldB と同じ)
+    vec2 fl = floor(scaled);
+    uvec2 cellU = uvec2(uCellBase) + (uFoldCell2 << uint(j)) + uvec2(ivec2(fl));
+    vec2 f = scaled - fl;
+    vec2 h = hash22cellU(cellU);
+    float dens = (j==0) ? 0.93 : (j==1) ? 0.80 : 0.72;     // 巨星 7% / 中 20% / 微光星 28% のホスト率
+    float present = smoothstep(dens-0.03, dens, fract(h.x*0.5+0.5));
+    if(present < 0.004) continue;
+    float mag = pow(fract(h.y*7.31), 4.0);                 // power-law: most stars faint, a few brilliant
+    vec2 fp = f - 0.5;
+    vec2 dv = fp - h*0.22;
+    float d2 = dot(dv,dv);
+    // CIRCULAR cell window: gaussian halo/spikes do not vanish at the cell border (a square window clips
+    // stars into rounded rectangles) — a radial fade centred on the cell keeps every contour round.
+    float edgeW = smoothstep(0.50, 0.34, length(fp));
+    float pt = present * (exp(-d2*42.0) + 0.25*exp(-d2*7.0)) * (0.35 + 0.85*mag);   // gaussian core + halo
+    float spike = present * smoothstep(0.85, 1.0, mag);
+    if(spike > 0.001){                                     // 4-point diffraction, brightest stars only
+      pt += spike * 0.55 * (exp(-abs(dv.x)*34.0 - abs(dv.y)*5.0)
+                          + exp(-abs(dv.y)*34.0 - abs(dv.x)*5.0));
+    }
+    pt *= w * edgeW * (0.55+0.45*sin(uFlow*3.0 + h.y*30.0));   // octave window + border fade + twinkle
+    pt *= 0.32 + 1.45*cloud;                                    // v55: 星雲/星団の塊(疎な空 + 濃い星の川)
+    ptSum   += pt;
+    tintSum += pt * (h.x-0.5);
+  }
+  // 引き側は星なしのまま(旧ルック「両ループ端は星なし」を維持): octavePhase 6.5-8.5 (lz≈-1.9..0.1) で
+  // フェードイン。fineVisible() は fold 基底が zoom-out clamp された帯の sub-pixel speckle を抑止。
+  ptSum *= smoothstep(6.5, 8.5, octavePhase()) * fineVisible();
+  return vec2(ptSum, (ptSum > 1e-5) ? tintSum/ptSum : 0.0);
+}
+
+void main(){
+  gBase = uCellBase;
+  // retro pixel mode: snap the sampling position to the centre of its block BEFORE anything is computed —
+  // all real pixels of a block render the identical colour (true chunky pixels, screen-locked grid).
+  vec2 fragC = gl_FragCoord.xy + uTileOrigin;   // v55: タイル分割書き出しで全画像座標に補正(単発は +0)
+  if(uPixel > 1.5) fragC = (floor(fragC/uPixel) + 0.5) * uPixel;
+  vec2 uvC = fragC / (vec2(uAspect, 1.0) * uResY);
+  vec2 cc = vec2((uvC.x-0.5)*uAspect, uvC.y-0.5);
+  // viewWorld is the residual-frame coord (small & precise; absolute = uCellBase + this)
+  vec2 viewWorld = uCenter + cc*uViewHeight;
+
+  // ---- central lens: CONCAVE dip (v50, ユーザー「くぼみを奥側に・もう少し緩めに」) ----
+  // Was a ~2.1x convex magnifier; now the centre DE-magnifies (~0.78x) so the surface reads as dipping AWAY
+  // from the viewer (奥側のくぼみ), with a wider, softer falloff and a quieter rim. Still accumulated as a
+  // DELTA on vw0 so it adds exactly 0.0 when the lens is off → viewWorld stays bit-exact (no deep-zoom
+  // precision loss). Anchored at uCenter (d ~ cc*uViewHeight, tiny) — no catastrophic-cancellation risk.
+  {
+    vec2 vw0 = viewWorld;          // precise original residual coord
+    vec2 dv  = vec2(0.0);          // accumulate lens displacements relative to vw0 (order-independent)
+    if(uLensC > 0.0){
+      vec2 d   = vw0 - uCenter;
+      vec2 toC = d/uViewHeight;
+      float ld = length(toC)/0.74;
+      float fall = 1.0 - smoothstep(0.40, 1.05, ld);                           // wider & softer edge (was 0.55-1.0)
+      dv += d * (mix(1.0, 1.28, uLensC*fall) - 1.0);                           // >1 = concave: centre sinks away (~0.78x)
+      dv -= normalize(toC+1e-4) * (uLensC*fall*smoothstep(0.35,1.00,ld)*0.10) * uViewHeight;  // quiet inward rim (was 0.20 outward)
+    }
+    viewWorld = vw0 + dv;          // delta is exactly 0 when the lens is off → bit-exact
+  }
+
+  // ---- integer-fold coords of THIS (warped) pixel — small & precise to deep zoom ----
+  vec2 ccWarped = (viewWorld - uCenter) / uViewHeight;     // warped screen offset (NDC-ish), f32-precise
+  gP0win  = uFoldFrac  + ccWarped * uFoldScale;            // window-base coord (small ~[0,2])
+  gP0fine = uFoldFrac2 + ccWarped * uFoldScale2;           // fine-base coord (small)
+  gP0gen  = uFoldFracG + ccWarped * uFoldScaleG;           // generator-octave coord (scale-following)
+
+  // ---- coherent anchored infinite zoom (folded → crisp at any depth) ----
+  const float DETAIL_BIAS = 1.0;                           // MUST equal FOLD_BIAS on CPU
+  float D = uLogZoom + DETAIL_BIAS;
+  float span = lodSpan();
+  vec2  fw   = fbmWindow(gP0win, D, span);   // folded coords, NOT viewWorld
+  float biomeBig = biomeField(uBiomeCoord + cc*min(uViewHeight,24.0)*BIOME_F + uSeed*0.3);  // cap screen term → no biome/theme aliasing at extreme zoom-OUT
+  vec3  f    = computeFieldAnchored(viewWorld, fw.x, fw.y, D, biomeBig);
+  float H       = f.x;
+  float ink     = f.y;
+  float biomeID = f.z;
+
+  H = clamp(0.5 + (H-0.5)*uTone.z, 0.0, 1.0);          // per-seed contrast
+  H = mix(H, smoothstep(0.15,0.85,H), 0.35*uEnergy);    // energy → punch (not speed)
+  // surface micro-detail: flat fills become material (renews per octave); slopes stay clean
+  { vec2 gH = vec2(dFdx(H), dFdy(H));
+    float erosionMask = 1.0/(1.0 + 6.0*dot(gH,gH));
+    H *= mix(1.0, microGrain(viewWorld), erosionMask); }
+
+  // v55: 深部の「霞んだ一色」対策 — ズームインで解像オクターブが減ると場が空間的に平坦化する(実測: 輝度 sd
+  // が引き 0.083 → アップ 0.043 に半減)。定数化した H は contrast curve では救えない(定数を拡大しても定数)
+  // ため、平坦になる深度でだけ FINE fold 基底の低オクターブ FBM を H に注入して雲スケールの「うねり」を足す。
+  // gnoiseFoldB(gP0fine/uFoldCell2) は microGrain/fracDispVec と同じ精度契約(C1/H1)＝深ズーム・書き出し安全。
+  // 引き(octavePhase≲3)は depthFlat=0 で無変更＝「引きは良い」を保存。fineVisible/deepFade で zoom-out 速度と
+  // 精度天井のスペックルを抑止。ズーム深度の連続関数なので wrap はゴーストが覆う(v54 螺旋ジャンプ含む)。
+  float depthFlat = smoothstep(3.0, 8.0, octavePhase()) * (1.0 - smoothstep(24.0, 30.0, uLogZoom)) * fineVisible();
+  if(depthFlat > 0.01){
+    float s0 = gnoiseFoldB(0, gP0fine,                  uFoldCell2);
+    float s1 = gnoiseFoldB(1, gP0fine + vec2(3.1, 1.7), uFoldCell2);
+    H = clamp(H + (s0*0.62 + s1*0.38) * 0.22 * depthFlat, 0.0, 1.0);
+  }
+
+  // ============ unified cosmic aesthetic (theme = place × zoom, smoothly blended) ============
+  float nodeness = smoothstep(0.45, 0.78, fw.y);
+  float seedTheme = floor(fract(uSeed.y*0.731)*6.0);                          // each seed has a HOME SLOT (0..5)
+  // theme zoom-slope 1/(3(1-uThemeLock)): the mix() scales the drift by (1-lock), so this makes the theme
+  // position advance EXACTLY 6 (≡ 0 mod 6) over the 18-octave loop for EVERY seed → colours are identical
+  // across the wrap at screen centre. Effective drift = 1/3 theme/octave for all seeds (inside the old
+  // 0.225-0.375 pacing envelope; a fixed slope like 0.5 or 1/3 can NOT be wrap-periodic under a random lock).
+  // PALETTE BREATHING (v35): a slow time swell drifts themePos ±0.35 slots, so the two blended biomes keep
+  // exchanging weight over ~1-2 minutes — colours are永遠に波打つ. Time-only + spatially uniform → identical on
+  // both sides of the loop wrap at any instant (v28 periodicity intact) and pan-seamless. Sitting inside the
+  // mix() scales the swell by (1-lock): home-anchored seeds breathe more gently — intentional.
+  float themePos  = mix(D/(3.0*(1.0-uThemeLock)) + (biomeBig-0.5)*4.0 + uSeed.x*0.5
+                        + 0.35*sin(uFlow*2.3 + uSeed.y), seedTheme+0.5, uThemeLock);
+
+  // find the TWO dominant SLOTS; each slot is mapped through the per-seed wheel into the 20-biome bank.
+  // Slot space (mod 6) is untouched → the v28 wrap periodicity holds; the wheel is a constant per seed.
+  // v55b: 配色も全6スロットの重み付き和にする(従来は amtA/B/C だけ平滑和で、配色 coolLab 等は top-2 argmax
+  // 選択だった)。argmax だと、パレット呼吸(uFlow)/パン(biomeBig)/ズームで themePos がスロット境界を跨ぐたびに
+  // 「2 位 biome の識別子」が離散的に入れ替わり、blend 重み wb は連続でも色が飛ぶ → アイドル中に画面がいきなり
+  // カクっと色替わりする突発ジャンプ(実測: median≈0 に対し frame 差分 spike 100+)。amtA/B/C と同じ連続ブレンドへ
+  // 統一して根絶。octWin(span2)は同時に効くスロットが実質 1-2 個で 3 個目は 0 から立ち上がる → グレー濁りにならず
+  // vivid(旧 Tk 再整形の役割は octWin の melt 幅が担う)。wrap 周期性不変(themePos は 18oct で 6≡0 進み weight 同一)。
+  vec4 amtA=vec4(0.0), amtB=vec4(0.0), amtC=vec4(0.0), amtD=vec4(0.0);   // v56: amtD = 顕微鏡/工業技法量
+  vec3 sCool=vec3(0.0), sWarm=vec3(0.0), sBg=vec3(0.0), sInk=vec3(0.0), sStar=vec3(0.0), sGlow=vec3(0.0);
+  float wSum=0.0;
+  for(int i=0;i<6;i++){
+    float dpos = themePos - float(i);
+    dpos -= 6.0*floor(dpos/6.0 + 0.5);          // nearest wrap on a cycle of 6 slots
+    float wgt = octWin(dpos, 2.0);
+    int ti = int(mod(uThemeBase + float(i)*uThemeStride, 24.0) + 0.5);   // wheel: slot -> biome (bank=24 v56; integer-valued floats)
+    amtA+=wgt*AMTA[ti]; amtB+=wgt*AMTB[ti]; amtC+=wgt*AMTC[ti]; amtD+=wgt*AMTD[ti];   // scalar amounts stay linear partition-of-unity
+    // v55c: 配色はスロット別 uniform(既定 or seedHash ランダム、CPU 前計算)を読む。技法量(AMTA/B/C)は不変。
+    sCool+=wgt*uSlotCool[i]; sWarm+=wgt*uSlotWarm[i]; sBg+=wgt*uSlotBg[i];
+    sInk+=wgt*uSlotInk[i]; sStar+=wgt*uSlotStar[i]; sGlow+=wgt*uSlotGlow[i]; wSum+=wgt;
+  }
+  float wInv = 1.0/max(wSum, 1e-4);
+  // palettes are pre-baked in OKLab → blend in Lab, convert back with cheap cubes (no linToOklab per pixel).
+  // coolLab/warmLab stay in Lab for the material ramp below (one more conversion saved).
+  // HUE WAVE (v35): the whole palette's hue slowly rotates in OKLab (a,b) — lightness untouched, so nothing
+  // pumps in brightness. The phase carries a gentle diagonal screen term → the shift literally WAVES across
+  // the frame (~23s period at default zoom; deeper zooms breathe slower via uFlow's zoomSlow). Screen-space
+  // phase + time-only term → wrap-seam and pan safe. ±0.12 rad ≈ ±7°: alive but never a different painting.
+  // v55: 螺旋周回の配色ドリフト — v54 の周回ジャンプ(300-900 単位)で位置が大きく変わると、この低周波の
+  // 位置項が配色の親戚(hue ±0.4rad ≈ ±23°)へ緩やかにずらす。「毎回違う風景」に加えて配色の家系も移ろう。
+  // uBiomeCoord(=center*0.04)の純関数 → パーマリンクで完全再現(claim/canonicalId 整合・schema 無変更)。
+  // 低周波(1000 単位級)なのでパン中はほぼ一定・周回ジャンプでだけ大きく動く。wrap 周期性は不変(ZMIN wrap
+  // では center 不変=連続、ZMAX 周回ジャンプではゴーストが覆う)。screen 項でなく center 項なので継ぎ目なし。
+  float eraHue = 0.4 * sin(uBiomeCoord.x*0.17 + uBiomeCoord.y*0.11 + uSeed.y*3.3);
+  float hueW = eraHue + 0.12 * sin(uFlow*6.0 + cc.x*1.3 + cc.y*0.7 + uSeed.x);
+  mat2 HR = mat2(cos(hueW), -sin(hueW), sin(hueW), cos(hueW));
+  vec3 coolLab = sCool*wInv, warmLab = sWarm*wInv;   // v55b: 連続な全スロット重み付き和(argmax 選択のカクつき廃止)
+  vec3 bgLab   = sBg*wInv,   inkLab  = sInk*wInv;
+  vec3 starLab = sStar*wInv, glowLab = sGlow*wInv;
+  coolLab.yz = HR*coolLab.yz; warmLab.yz = HR*warmLab.yz; bgLab.yz  = HR*bgLab.yz;
+  inkLab.yz  = HR*inkLab.yz;  starLab.yz = HR*starLab.yz; glowLab.yz = HR*glowLab.yz;
+  vec3 bg   = oklabToLin(bgLab),   coolC = oklabToLin(coolLab);
+  vec3 warmC= oklabToLin(warmLab), inkC  = oklabToLin(inkLab);
+  vec3 starC= oklabToLin(starLab), glowC = oklabToLin(glowLab);
+  float metalAmt=clamp(amtA.x + uTone.y, 0.0, 1.0), inkAmt=amtA.y, starAmt=amtA.z, glowAmt=amtA.w;   // uTone.y = per-seed metal bias (reconnected)
+  float hypsoAmt=amtB.x, fillAmt=amtB.y, contrastMul=amtB.z;
+
+  // v55: 深部コントラスト補償(上の H うねり注入と対)。狭い色域に潰れた ramp を再展開する contrast lift。
+  // depthFlat は上で算出済み(引きは 0＝無変更)。うねり注入が空間変化を、この lift がその振幅を稼ぐ二段構え。
+  float cMul = contrastMul * (1.0 + 0.5*depthFlat);
+  float Hc = clamp(0.5 + (H-0.5)*cMul, 0.0, 1.0);
+
+  // base material: cool→warm ramp mixed directly in Lab (same result as the old oklabMix round-trip)
+  vec3 ramp = oklabToLin(mix(coolLab, warmLab, smoothstep(0.18, 0.86, Hc)));
+  vec3 material = mix(ramp, hypsoRamp(Hc), hypsoAmt);
+
+  // metallic shading — faded in only for metal / crystal themes
+  // PERF: derivatives stay OUTSIDE the branch (dFdx in non-uniform control flow is undefined); the expensive
+  // shading (envColor + fresnel + pow^28 aniso) is skipped when the theme blend gives metal <0.2% weight —
+  // that contribution is sub-LSB, so sumi-e/nebula/strata pixels pay nothing for metal.
+  vec2 g = vec2(dFdx(H), dFdy(H));
+  // CRITICAL (deep-zoom): the screen-space derivative is reliable only where the field actually
+  // slopes. In flat patches at extreme zoom, ΔH/pixel falls below H's f32 ULP so dFdx(H) collapses
+  // to pure quantisation noise — and normalize(g)+pow(.,28) aniso amplify that into a "dot" carpet.
+  // Gate the whole metal contribution by gradient magnitude so noise-grade gradients read as smooth.
+  float gReliable = smoothstep(5.0e-6, 4.0e-5, length(g));
+  vec3 nrm = normalize(vec3(-g*2.6, 1.0));               // shared by metal AND the universal relief below
+  // deepFade: at extreme zoom H carries sub-8-bit f32 stair-steps (~1e-4) that dFdx turns into shading
+  // speckle — indistinguishable by magnitude from real gentle slopes, so fade slope shading by zoom depth.
+  float deepFadeSlope = 1.0 - smoothstep(25.0, 31.0, uLogZoom);
+  if(metalAmt > 0.002){
+    vec3 vv = vec3(0.0,0.0,1.0), rd = reflect(-vv, nrm);
+    float fres = fresnelSchlick(max(dot(nrm,vv),0.0), 0.08);
+    float aA = biomeID*6.2831;
+    // v46b: 光条を細く (指数 28→80、ユーザー「テカテカが太い・もっと細く」)。microGrain の偏差で髪の毛状に
+    // 砕く (brushed metal) — fold 精度・world 定着なので書き出し/深ズームは従来どおり安全。
+    float aniso = pow(clamp(1.0-abs(dot(normalize(g+1e-5), vec2(cos(aA),sin(aA)))),0.0,1.0), 80.0) * gReliable;
+    float mgA = clamp((microGrain(viewWorld, vec2(0.37,0.11)) - 0.8) / 0.4, 0.0, 1.0);
+    aniso *= 0.5 + 0.5*mgA;
+    vec3 metalCol = envColor(rd)*mix(vec3(0.40), warmC*1.2, fres)*0.85 + aniso*vec3(1.0,0.97,0.9)*1.05;
+    material = mix(material, metalCol, metalAmt * gReliable * deepFadeSlope);
+  }
+  // universal micro-relief: a faint lambert term from the SAME height gradient gives every theme a quiet
+  // sense of physical surface (sumi paper, nebula dust banks, strata terraces) without touching palettes.
+  // Metal-heavy and ink-heavy pixels are excluded (they carry their own shading language).
+  {
+    float lam = clamp(dot(nrm, normalize(vec3(0.5,0.6,0.62))), 0.0, 1.0);
+    float relief = 0.30 * gReliable * deepFadeSlope * (1.0 - metalAmt) * (1.0 - inkAmt*0.7);
+    material *= mix(1.0, 0.85 + 0.30*lam, relief);
+  }
+
+  // subtle per-seed tint so each seed varies within a theme
+  material *= 0.9 + 0.2*fract(uSeed.x*0.13 + vec3(0.0,0.33,0.66));
+
+  // coverage: dark themes reveal material only in bright nodes; fill themes cover fully
+  float hMask = smoothstep(0.42, 0.72, H);
+  float coverage = clamp(mix(hMask, 1.0, fillAmt), 0.0, 1.0);
+  vec3 col = mix(bg, material, coverage);
+
+  // ==== reference-driven material techniques (v46/v48, AMTC) — the procedural equivalents of texture mapping ====
+  // All derive from the SAME height field + gradients (no image textures → infinite zoom + 非AI brand intact).
+  // shared multi-scale PUFF field for billow & dust (fold-precise gnoiseFoldB; sampled only when needed).
+  // v49 randomized SIZE & VECTOR (ユーザー「連続に見える・大きさもベクトルもランダムに」):
+  //  (1) domain warp wv — a coarse vector field bends the sampling position, so the apparent stretch
+  //      direction varies region to region (雲の流れ・暗黒帯のうねりが場所ごとに別方向)
+  //  (2) regional scale selector sel — some regions are dominated by BIG boulders (octave 1), others by
+  //      fine curds (octaves 2-3) → granule size varies patch to patch instead of one uniform speckle
+  //  NOTE: no backticks in comments here — this lives inside a JS template literal.
+  float puff = 0.5, puffW = 0.0;
+  if(amtC.x > 0.002 || amtC.w > 0.002){
+    vec2 wv = 0.7 * vec2(gnoiseFoldB(0, gP0fine + vec2(0.37,0.91), uFoldCell2),
+                         gnoiseFoldB(0, gP0fine + vec2(0.83,0.29), uFoldCell2));   // 0.7: 方向は乱すが丸みは保つ (1.6 はマーブル化)
+    vec2 q  = gP0fine + wv;                                          // warped position (additive → fold-safe)
+    float sel = gnoiseFoldB(0, gP0fine + vec2(0.11,0.57), uFoldCell2)*0.5+0.5;
+    puffW = smoothstep(0.20, 0.80, sel);                             // 0 = fine curds … 1 = big boulders
+    float p0 = gnoiseFoldB(1, q + vec2(0.21,0.47), uFoldCell2)*0.5+0.5;
+    float p1 = gnoiseFoldB(2, q + vec2(0.68,0.13), uFoldCell2)*0.5+0.5;
+    float p2 = gnoiseFoldB(3, q + vec2(0.44,0.77), uFoldCell2)*0.5+0.5;
+    puff = mix(p2*0.55 + p1*0.45, p0*0.62 + p1*0.38, puffW);
+  }
+  // (billow v48 もくもく) cumulus volume — ref-cloud: cauliflower boundary (puff-perturbed mask), sunlit
+  // cream crowns vs slate crevice shadows, silver lining exactly at the cloud edge.
+  if(amtC.x > 0.002){
+    float mgB = clamp((microGrain(viewWorld, vec2(0.90,0.31)) - 0.8) / 0.4, 0.0, 1.0);
+    float d = smoothstep(0.34, 0.80, H + (puff-0.5)*(0.38 + 0.34*puffW) + (mgB-0.5)*0.12);   // boulders push harder
+    vec3 Ldir = normalize(vec3(0.5,0.6,0.62));
+    float gd = gReliable * deepFadeSlope;
+    float facing = mix(0.5, clamp(dot(nrm, Ldir), 0.0, 1.0), gd);   // graceful at deep zoom (no speckle)
+    float lit = clamp(facing*0.55 + (puff-0.38)*1.1, 0.0, 1.0);
+    vec3 shadowC = mix(vec3(0.50,0.58,0.74), coolC, 0.35);          // slate shadow, biome-tinted
+    vec3 litC    = mix(vec3(1.00,0.97,0.90), warmC, 0.25);          // sunlit crown
+    vec3 cloudCol = mix(shadowC, litC, lit);
+    float rimB = smoothstep(0.02, 0.20, d) * (1.0 - smoothstep(0.20, 0.58, d));
+    cloudCol += rimB * vec3(1.0, 0.95, 0.80) * (0.30 + 0.50*facing);
+    cloudCol *= 1.0 - (1.0-puff)*(1.0-puff) * 0.50 * d;             // crevice shadows between puffs
+    col = mix(col, cloudCol, amtC.x * d * 0.92);
+  }
+  // (foam) breaking crests — ref-wave: emerald transmission just under the crest, white foam on the ridge,
+  // navy troughs (Beer–Lambert). Breakup = microGrain deviation remapped to [0,1] (fold-precise, world-anchored).
+  if(amtC.y > 0.002){
+    float mg = clamp((microGrain(viewWorld) - 0.8) / 0.4, 0.0, 1.0);
+    float trans = smoothstep(0.48, 0.72, H) * (1.0 - smoothstep(0.78, 0.95, H));
+    col += amtC.y * trans * vec3(0.05, 0.55, 0.42) * 0.5;
+    float foam = smoothstep(0.62, 0.92, H) * (0.45 + 0.55*mg);
+    col = mix(col, vec3(0.93, 0.97, 0.96), amtC.y * foam * 0.8);
+    col *= mix(vec3(1.0), vec3(0.55, 0.68, 0.88), amtC.y * smoothstep(0.35, 0.05, H) * 0.5);
+  }
+  // (scatter) deep-sea fog — ref-deepsea: valleys drown into blue-black; glow/stars are added AFTER this
+  // block so bioluminescence and vents survive the dark (accents pierce the fog).
+  if(amtC.z > 0.002){
+    vec3 abyss = mix(bg, vec3(0.010, 0.030, 0.060), 0.6);
+    col = mix(col, abyss, amtC.z * smoothstep(0.75, 0.15, H) * 0.55);
+    col += amtC.z * vec3(0.02, 0.10, 0.12) * smoothstep(0.3, 0.7, H) * 0.25;
+  }
+
+  // ============ v56 顕微鏡・工業バイオーム技法(AMTD)============
+  // 全て FINE fold 基底(gP0fine/uFoldCell2)上の自己完結構造。cell = uCellBase+(uFoldCell2<<t)+floor(gP0fine*2^t)
+  // を hash22cellU(uvec2 mod 2^32)で引く = gnoiseFoldB/starField と同一契約(C1/H1)。加算オフセット・power-of-two
+  // 拡大のみ → pan/wrap シームレス。octavePhase 追従の {1-g,1,g} 窓でズームインで細分化(顕微鏡/望遠鏡)。
+  // 時間項なし → export/claim パリティ。深部は fineVisible×smoothstep(uLogZoom) で speckle 抑止。
+
+  // (cells AMTD.x) 顕微鏡下の細胞: Voronoi 膜 + 半透明細胞質 + 蛍光核。膜/核は window-weighted MAX でくっきり。
+  if(amtD.x > 0.002){
+    float gWin = clamp(octavePhase() - float(uLref2) - 2.0, 0.0, 1.0);
+    float memMax=0.0, nucMax=0.0, cytoAcc=0.0, wAcc=0.0;
+    for(int t=0;t<3;t++){
+      float w = (t==0)?(1.0-gWin):(t==1)?1.0:gWin;
+      if(w < 0.004) continue;
+      vec2 scaled = gP0fine * exp2(float(t));
+      vec2 fl = floor(scaled), fr = scaled - fl;
+      uvec2 cb = uvec2(uCellBase) + (uFoldCell2 << uint(t));
+      float F1=9.0, F2=9.0; vec2 winH=vec2(0.0);
+      for(int oy=-1;oy<=1;oy++) for(int ox=-1;ox<=1;ox++){
+        vec2 hh = hash22cellU(cb + uvec2(ivec2(fl) + ivec2(ox,oy)));
+        vec2 fp = vec2(float(ox),float(oy)) + 0.5 + 0.30*hh - fr;
+        float dd = dot(fp,fp);
+        if(dd<F1){ F2=F1; F1=dd; winH=hh; } else if(dd<F2){ F2=dd; }
+      }
+      F1=sqrt(F1); F2=sqrt(F2);
+      float edge = F2 - F1;
+      float membrane = 1.0 - smoothstep(0.008, 0.055, edge);        // 細い蛍光膜
+      float cyto = smoothstep(0.04, 0.42, edge);
+      float hasNuc = step(0.55, fract(winH.x*3.17 + winH.y*1.73));
+      float nuc = hasNuc * (1.0 - smoothstep(0.02, 0.11 + 0.06*(winH.y*0.5+0.5), F1));
+      memMax = max(memMax, w*membrane); nucMax = max(nucMax, w*nuc);   // 硬エッジは MAX(平均で滲ませない)
+      cytoAcc += w*cyto; wAcc += w;
+    }
+    float cyto = cytoAcc/max(wAcc,1e-4);
+    vec3 cytoHue = mix(coolC, vec3(0.02,0.30,0.34), 0.5);            // ランダム配色でも teal/magenta/green に寄せる
+    vec3 memHue  = mix(warmC, vec3(0.55,0.02,0.30), 0.6);
+    vec3 nucHue  = mix(glowC, vec3(0.10,0.55,0.12), 0.6);
+    vec3 tissue = bg;
+    tissue = mix(tissue, cytoHue, 0.32 + 0.58*cyto);
+    tissue *= 1.0 + 0.12*(microGrain(viewWorld, vec2(0.29,0.63)) - 1.0);
+    tissue = mix(tissue, memHue, memMax*0.95);
+    tissue += nucHue * nucMax * 1.20;
+    col = mix(col, tissue, amtD.x * fineVisible() * (1.0 - smoothstep(31.0, 35.0, uLogZoom)));
+  }
+
+  // (silicon-die AMTD.y) 半導体: 直交メタル配線 + パッド/ビア + メモリアレイ + 酸化膜干渉色。
+  if(amtD.y > 0.002){
+    float dieVis = smoothstep(2.5, 5.0, octavePhase()) * fineVisible() * (1.0 - smoothstep(27.0, 33.0, uLogZoom));
+    if(dieVis > 0.003){
+      float memMask = smoothstep(0.58, 0.74, gnoiseFoldB(0, gP0win + vec2(5.1,8.3), uFoldCell)*0.5 + 0.5);
+      float thick   = 0.5 + 0.5*gnoiseFoldB(0, gP0win + vec2(2.7,6.1), uFoldCell);
+      float gWin = clamp(octavePhase() - float(uLref2) - 2.0, 0.0, 1.0);
+      vec3 acc = vec3(0.0); float wAcc = 0.0;
+      for(int j=0;j<3;j++){
+        float w = (j==0)?(1.0-gWin):(j==1)?1.0:gWin;
+        if(w < 0.004) continue;
+        vec2 scaled = gP0fine * exp2(float(j));
+        vec2 fl = floor(scaled);
+        uvec2 cellU = uvec2(uCellBase) + (uFoldCell2 << uint(j)) + uvec2(ivec2(fl));
+        vec2 lf = scaled - fl;
+        vec2 h00 = hash22cellU(cellU), h10 = hash22cellU(cellU + uvec2(1u,0u)), h01 = hash22cellU(cellU + uvec2(0u,1u));
+        float dens = mix(0.62, 0.50, float(j)*0.5);                  // 粗タップ=太い電源配線 / 細=信号
+        float pL=step(dens,h00.x*0.5+0.5), pR=step(dens,h10.x*0.5+0.5), pB=step(dens,h00.y*0.5+0.5), pT=step(dens,h01.y*0.5+0.5);
+        float big=1e3;
+        float dL=(pL>0.5)?length(lf-vec2(clamp(lf.x,0.0,0.5),0.5)):big;
+        float dR=(pR>0.5)?length(lf-vec2(clamp(lf.x,0.5,1.0),0.5)):big;
+        float dB=(pB>0.5)?length(lf-vec2(0.5,clamp(lf.y,0.0,0.5))):big;
+        float dT=(pT>0.5)?length(lf-vec2(0.5,clamp(lf.y,0.5,1.0))):big;
+        float dWire = min(min(dL,dR),min(dB,dT));
+        float trAA = clamp(exp2(float(j))*uFoldScale2/uResY*1.3, 6e-4, 0.20);   // fwidth 不要(uniform 由来)
+        float trHW = mix(0.13, 0.06, float(j)*0.5);
+        float trace = smoothstep(trHW+trAA, trHW-trAA, dWire);
+        float ports = pL+pR+pB+pT;
+        float cdist = max(abs(lf.x-0.5), abs(lf.y-0.5));
+        float padAA = min(trAA, 0.06);
+        float via = (ports>1.5)? smoothstep(0.12+padAA, 0.12-padAA, cdist) : 0.0;   // 実ジャンクションのみ
+        vec2 ag = abs(fract(lf*4.0) - 0.5);
+        float arr = (1.0 - smoothstep(0.06-trAA*0.5, 0.13+trAA, min(ag.x,ag.y))) * memMask;
+        acc += w * vec3(max(trace, arr*0.7), via, fract(h00.x*7.3 + h00.y*3.1));
+        wAcc += w;
+      }
+      float traceM = clamp(acc.x,0.0,1.0), viaM = clamp(acc.y,0.0,1.0), iriPh = acc.z/max(wAcc,1e-4);
+      vec3 iri = 0.5 + 0.5*cos(6.2831*((thick + iriPh*0.35)*1.6 + vec3(0.0,0.33,0.66)));
+      iri = mix(vec3(dot(iri, vec3(0.333))), iri, 0.7);
+      vec3 substrate = mix(bg, coolC, 0.40);
+      substrate = mix(substrate, substrate*(0.70 + 0.60*iri), 0.30);
+      float bevel = mix(1.0, 0.75 + 0.50*clamp(dot(nrm, normalize(vec3(0.4,0.6,0.7))),0.0,1.0), gReliable*deepFadeSlope);
+      vec3 metalTrace = mix(warmC, starC, 0.30) * (0.85 + 0.30*iri) * bevel;
+      vec3 dieCol = substrate;
+      dieCol = mix(dieCol, metalTrace, traceM);
+      dieCol = mix(dieCol, mix(starC, vec3(1.0), 0.30), viaM*0.90);
+      dieCol += glowC * viaM * 0.35;
+      col = mix(col, dieCol, amtD.y * dieVis);
+    }
+  }
+
+  // (woven-textile AMTD.z) 織物: 経緯糸の over-under 交織 + 2/2 綾 + 糸の光沢。糸幅/染めは per-thread hash で連続。
+  if(amtD.z > 0.002){
+    float gWin = clamp(octavePhase() - float(uLref2) - 2.0, 0.0, 1.0);
+    float visZ = smoothstep(1.5, 4.0, octavePhase());
+    float fadeF = fineVisible() * (1.0 - smoothstep(27.0, 33.0, uLogZoom));
+    float slubLen = microGrain(viewWorld, vec2(0.61,0.23));
+    vec3 wCol = vec3(0.0); float wCov = 0.0, wSum = 0.0;
+    for(int j=0;j<3;j++){
+      float wj = (j==0)?(1.0-gWin):(j==1)?1.0:gWin;
+      if(wj < 0.004) continue;
+      vec2 scaled = gP0fine * exp2(float(j));
+      vec2 fl = floor(scaled), fc = scaled - fl;
+      uvec2 cellU = uvec2(uCellBase) + (uFoldCell2 << uint(j)) + uvec2(ivec2(fl));
+      vec2 hw = hash22cellU(uvec2(cellU.x, 0x9E37u));               // per-warp-column(縦糸で連続)
+      vec2 hf = hash22cellU(uvec2(0x85EBu, cellU.y));               // per-weft-row(横糸で連続)
+      float twW = 0.42*(0.85+0.30*fract(hw.x*0.5+0.5))*mix(1.0,slubLen,0.5);
+      float twF = 0.42*(0.85+0.30*fract(hf.x*0.5+0.5))*mix(1.0,slubLen,0.5);
+      float wx = (fc.x-0.5)/twW, wy = (fc.y-0.5)/twF;
+      float warpIn = 1.0 - smoothstep(0.86,1.0,abs(wx));
+      float weftIn = 1.0 - smoothstep(0.86,1.0,abs(wy));
+      float warpP = sqrt(max(1.0-wx*wx,0.0))*warpIn;
+      float weftP = sqrt(max(1.0-wy*wy,0.0))*weftIn;
+      float warpUp = ((cellU.x + cellU.y) & 3u) < 2u ? 1.0 : 0.0;    // 2/2 綾(対角フロート)
+      float useWarp = smoothstep(-0.04, 0.04, warpP*(1.0+warpUp) - weftP*(2.0-warpUp));
+      float cover = max(warpIn, weftIn);
+      float prof = mix(weftP, warpP, useWarp);
+      float fib = mix(0.5+0.5*sin(fc.y*6.2831853*6.0), 0.5+0.5*sin(fc.x*6.2831853*6.0), useWarp);
+      float sheen = pow(prof, 7.0) * (0.55 + 0.45*fib*fadeF);
+      vec3 dye = mix(coolC, warmC, useWarp);
+      vec2 hsh = mix(hf, hw, useWarp);
+      dye = mix(dye, dye*(0.75+0.5*fract(hsh.y*0.5+0.5)), 0.30);     // dye-lot も per-thread
+      vec3 yarn = mix(mix(bg, inkC, 0.5), dye, cover);
+      yarn *= 0.55 + 0.55*prof;
+      yarn += fib*fadeF*0.06*dye;
+      yarn += sheen * glowC * 1.15;
+      wCol += wj*yarn; wCov += wj*cover; wSum += wj;
+    }
+    float inv = 1.0/max(wSum,1e-4);
+    wCol *= inv; wCov *= inv;
+    wCol *= 0.72 + 0.56*smoothstep(0.15, 0.85, H);                   // 共有 H = 布のドレープ(明暗)
+    col = mix(col, wCol, amtD.z * (0.55 + 0.45*wCov) * visZ);
+  }
+
+  // (megacity-noir AMTD.w) 俯瞰の夜景都市: 直交ブロック + 街路キャニオン + 窓/街灯 + スモッグ。signature 色は
+  // コードに固定しパレットで色付け(ランダム配色でもナトリウム橙×ネオン teal が残る)。夜寄りのトーン。
+  if(amtD.w > 0.002){
+    float gWinC = clamp(octavePhase() - float(uLref2) - 2.0, 0.0, 1.0);
+    float dense = smoothstep(0.62, 0.30, gnoiseFoldB(0, gP0win + vec2(5.7,2.3), uFoldCell)*0.5 + 0.5);
+    vec3 mcCol = vec3(0.0), mcLitCol = vec3(0.0);
+    float mcCanyon = 0.0, mcW = 0.0;
+    vec3 sodium = vec3(1.00,0.52,0.14), neonT = vec3(0.10,0.85,0.92);
+    for(int jc=0;jc<3;jc++){
+      float w = (jc==0)?(1.0-gWinC):(jc==1)?1.0:gWinC;
+      if(w < 0.004) continue;
+      vec2 scaled = gP0fine * exp2(float(jc));
+      vec2 fl = floor(scaled);
+      uvec2 cellU = uvec2(uCellBase) + (uFoldCell2 << uint(jc)) + uvec2(ivec2(fl));
+      vec2 cf = scaled - fl;
+      vec2 hA = hash22cellU(cellU)*0.5+0.5, hB = hash22cellU(cellU+uvec2(19u,83u))*0.5+0.5;
+      vec2 hC = hash22cellU(cellU+uvec2(51u,7u))*0.5+0.5, hD = hash22cellU(cellU+uvec2(37u,71u))*0.5+0.5;
+      vec2 bd2 = min(cf, 1.0-cf); float bd = min(bd2.x, bd2.y);
+      float sw = (0.045 + 0.055*hB.x) * mix(1.7, 0.8, dense);
+      float st = 1.0 - smoothstep(sw*0.55, sw, bd);
+      float plaza = smoothstep(0.90, 0.965, hA.x);
+      float roofB = (0.12 + 0.60*hA.y) * (1.0 - plaza);
+      vec3 roofC = mix(coolC, warmC, hA.y*hA.y) * (0.06 + 0.55*roofB);   // 夜: 屋根は暗め
+      mcCol += w*roofC; mcCanyon += w*st; mcW += w;
+      float has = smoothstep(0.40, 0.50, hB.y);
+      if(has > 0.001){
+        vec2 lp = cf - (0.28 + 0.44*vec2(hC.x, hD.x));
+        float d2 = dot(lp,lp);
+        float edgeW = smoothstep(0.50, 0.34, length(cf-0.5));           // セル端で消す(直線カット防止)
+        float pt = has * (1.0-st) * edgeW * (exp(-d2*120.0) + 0.15*exp(-d2*22.0)) * (0.30 + 1.20*pow(hD.y,2.0));
+        float neon = step(0.80, hC.y);
+        mcLitCol += w * pt * mix(mix(sodium, neonT, neon), mix(starC, glowC, neon), 0.35);   // 65% 固定色 + 35% パレット
+      }
+    }
+    float inv = 1.0/max(mcW,1e-3);
+    mcCol *= inv; mcCanyon *= inv;
+    float smog = smoothstep(0.35, 0.85, gnoiseFoldB(0, gP0win + vec2(2.1,6.4), uFoldCell)*0.5 + 0.5);
+    vec3 smogC = mix(vec3(0.16,0.10,0.06), warmC, 0.35);
+    vec3 scene = mix(mcCol, bg*0.18, mcCanyon);                          // 暗い街路キャニオン
+    scene += mcLitCol * 2.4;                                            // 明るい点光源(夜に映える)
+    scene = mix(scene, smogC, smog*0.42);
+    float cityVis = fineVisible() * (1.0 - smoothstep(28.0, 33.0, uLogZoom));
+    scene = mix(col, scene, cityVis);                                   // 解像不能な引き/深部は下地の場を残す
+    col = mix(col, scene, amtD.w);
+  }
+
+  // void atmosphere — sparse / deep-zoom regions stay alive (never blank)
+  float empt = (1.0 - coverage) * (1.0 - 0.6*nodeness);
+  if(empt > 0.01){
+    float grad = 0.5 + 0.5*sin(viewWorld.x*0.12 + viewWorld.y*0.09 + uSeed.x);
+    vec3  wash = mix(bg, glowC*0.5 + coolC*0.5, 0.22);
+    col = mix(col, mix(wash, wash*1.22, grad), empt*0.5);
+  }
+
+  // additive glow in nodes (nebula / biolum / crystal) — fades with theme
+  col += glowAmt * glowC * smoothstep(0.5,0.92,H) * (0.5 + 0.9*nodeness);
+
+  // (dust v48) galaxy absorption lanes — ref-galaxy: warm-brown filaments BLOCK the body light (applied after
+  // glow, before stars → foreground stars stay clean). fw.y mid-band × puff octaves = branching complexity.
+  if(amtC.w > 0.002){
+    float lane = smoothstep(0.33, 0.50, fw.y) * (1.0 - smoothstep(0.55, 0.74, fw.y));
+    lane *= 0.45 + 1.10*(1.0 - puff);                              // puff carves the lanes into filament branches
+    float dMask = clamp(amtC.w * lane * smoothstep(0.32, 0.62, H), 0.0, 1.0);
+    col *= mix(vec3(1.0), vec3(0.36, 0.28, 0.22), dMask * 0.75);
+    // granular star-speckle: thousands of faint point grains across the luminous body (ref-galaxy の星の粒)
+    float mgS = clamp((microGrain(viewWorld, vec2(0.53,0.77)) - 0.8) / 0.4, 0.0, 1.0);
+    col += amtC.w * pow(mgS, 7.0) * vec3(1.0, 0.93, 0.80) * 1.1 * smoothstep(0.30, 0.62, H) * (1.0 - dMask);
+  }
+
+  // star / sparkle field — fades with theme; also fades when sub-pixel (zoom-out) → no static
+  // PERF: skipped entirely when the theme blend gives stars <0.2% weight (sumi-e/strata pay nothing)
+  if(starAmt > 0.002){
+    vec2 st = starField();   // v52: fold 基底のスケール追従星野(引数不要 — gP0fine を直接参照)
+    vec3 stC = mix(starC, warmC, st.y*0.4);            // per-star colour-temperature jitter
+    // v55: 星の色族 — 世界ごとに星の集団年齢が偏る(青白い若い星団 ↔ オレンジの老いた星々)。uSeed の純関数
+    // なので座標で再現。若い世界(fam<0)は青白へ、老いた世界(fam>0)は琥珀へ全体シフト + 星ごとの温度も広げる。
+    float starFam = sin(uSeed.x*8.3 + uSeed.y*3.1);                 // [-1,1] per-world 集団年齢
+    vec3 famCol = (starFam > 0.0) ? vec3(1.00,0.80,0.52) : vec3(0.70,0.83,1.00);
+    stC = mix(stC, famCol, abs(starFam) * 0.40 * (0.45 + 0.55*abs(st.y)));
+    // (dust worlds) さらに温度差を広げる — ref-galaxy: blue-white young clusters vs orange old stars
+    stC = mix(stC, (st.y > 0.0) ? vec3(1.0,0.72,0.45) : vec3(0.70,0.82,1.0), amtC.w * abs(st.y) * 0.9);
+    col += starAmt * st.x * stC * (0.6 + 0.6*nodeness) * smoothstep(2.0, 8.0, featurePx(1.0))   // wider gate → BOTH loop ends starless (wrap-symmetric); mid-band nebula unchanged
+         * (1.0 - smoothstep(27.0, 33.0, uLogZoom));   // deepFade: no static star-dot carpet past the precision ceiling
+  }
+
+  // ink lines (contours / hatching) — fades with theme
+  col = mix(col, inkC, ink * inkAmt * smoothstep(0.0,0.18,ink));
+
+  // (double exposure) per-seed second layer: a luminous, palette-tinted structure screen-blended over the field.
+  // Screen-sized (ccWarped) + pans/drifts with navigation (uBiomeCoord/uLogZoom) → an independent "second exposure"
+  // that morphs as you explore. Pure fn of the coordinate (export-parity) and does NOT touch the deep-zoom fold.
+  // seedHash-derived QUALITY axis (not a headline count multiplier, DIVERSITY_EXPANSION.md §6). ~33% of worlds.
+  if(uLayer > 0.0){
+    vec2 lc = ccWarped*2.6 + uBiomeCoord*1.5 + vec2(uLogZoom*0.30, uLogZoom*0.18) + uSeed*1.3;
+    lc = mat2(0.28,-0.96,0.96,0.28)*lc;
+    float g0 = biomeField(lc);
+    float g1 = biomeField(lc*2.7 + 4.0);
+    float g2 = biomeField(lc*6.3 + 9.0);
+    float ghost = smoothstep(0.34, 0.82, g0*0.6 + g1*0.3 + g2*0.1);
+    // v52: 発光斑の内部ディテール — 3 オクターブの滑らか blob は「のっぺりした丸い光」に見えるため、
+    // 細かい第 4 オクターブで内部に恒常的なむらを刻む(screen-locked 層なのでどのズームでも同じ密度)
+    float g3 = biomeField(lc*13.0 + 23.0);
+    ghost *= 0.72 + 0.56*g3;
+    vec3 ghostCol = mix(glowC*1.1, warmC, g1);
+    col = 1.0 - (1.0 - clamp(col,0.0,1.0)) * (1.0 - clamp(ghostCol,0.0,2.0)*ghost*uLayer);
+  }
+  // deterministic auto-exposure: keep every view mid-key (fixes dull / blown seeds)
+  float autoExp = clamp(0.42/max(mix(0.30,0.62,fw.y),0.08), 0.80, 1.40);
+  col *= autoExp;
+  frag = vec4(post(col, cc, length(cc), fragC), 1.0);   // quantized coords → grain/dither/dots are per-block too
+}`;
+
+/* ================= gl program ================= */
+function sh(type, src){
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){ console.error(gl.getShaderInfoLog(s)); throw new Error('shader'); }
+  return s;
+}
+/* ===== theme palettes: authoritative LINEAR values, baked to OKLab at shader-build time =====
+   Same numbers the GLSL arrays used to hold. JS f64 cbrt vs GPU pow differs by ±1-2 ULP — perceptually
+   identical, sub-LSB after ACES + TPDF dither (noted in WORKLOG: export is quality-preserving, not
+   bit-identical). Eliminates 12 linToOklab calls (36 pow) per pixel. */
+/* 20 biomes — order MUST match the GLSL AMTA/AMTB/AMTC tables:
+   0 nebula  1 metal  2 sumi-e  3 crystal  4 biolum  5 strata  6 jade-shallows  7 magma
+   8 aurora-night  9 desert-sandstone  10 moss-floor  11 rust-verdigris  12 glacier
+   13 obsidian-gold  14 blossom-wash  15 abyssal-vents
+   16 cumulus(雲海)  17 swell(外洋)  18 marine-snow(深海光柱)  19 spiral-galaxy(渦巻銀河)  ← v47 参照駆動 (designs/brand/reference/) */
+const THEME_LIN = {
+  BG:  [[0.008,0.012,0.040],[0.050,0.060,0.080],[0.950,0.930,0.860],[0.100,0.060,0.180],[0.012,0.030,0.050],[0.930,0.900,0.840],
+        [0.050,0.180,0.250],[0.020,0.010,0.008],[0.005,0.010,0.025],[0.900,0.820,0.660],[0.040,0.070,0.030],[0.100,0.060,0.040],
+        [0.850,0.920,0.970],[0.015,0.012,0.020],[0.960,0.920,0.900],[0.004,0.008,0.016],
+        [0.420,0.550,0.720],[0.015,0.070,0.140],[0.003,0.008,0.016],[0.004,0.005,0.012],
+        [0.014,0.007,0.022],[0.008,0.020,0.016],[0.014,0.013,0.028],[0.008,0.009,0.013]],
+  COOL:[[0.050,0.120,0.500],[0.100,0.120,0.160],[0.900,0.880,0.820],[0.250,0.150,0.450],[0.000,0.250,0.320],[0.120,0.130,0.320],
+        [0.020,0.100,0.220],[0.080,0.060,0.060],[0.050,0.350,0.300],[0.550,0.420,0.300],[0.150,0.350,0.120],[0.200,0.550,0.450],
+        [0.150,0.350,0.600],[0.100,0.100,0.140],[0.850,0.600,0.650],[0.050,0.120,0.250],
+        [0.280,0.400,0.560],[0.010,0.050,0.120],[0.010,0.050,0.100],[0.360,0.440,0.620],
+        [0.045,0.230,0.240],[0.030,0.160,0.150],[0.035,0.055,0.230],[0.045,0.055,0.075]],
+  WARM:[[1.000,0.480,0.550],[0.850,0.880,0.960],[0.100,0.100,0.110],[0.880,0.920,1.000],[0.200,1.000,0.820],[0.900,0.880,0.780],
+        [0.100,0.650,0.550],[1.000,0.450,0.100],[0.550,0.300,0.850],[0.980,0.920,0.780],[0.750,0.800,0.350],[0.800,0.350,0.120],
+        [0.980,0.990,1.000],[1.000,0.780,0.250],[0.990,0.960,0.930],[0.950,0.400,0.150],
+        [0.980,0.940,0.850],[0.050,0.550,0.450],[0.220,0.420,0.520],[1.000,0.800,0.500],
+        [0.780,0.140,0.420],[0.920,0.800,0.420],[0.520,0.095,0.055],[0.420,0.300,0.160]],
+  INKC:[[0.600,0.700,1.000],[0.700,0.750,0.850],[0.060,0.070,0.060],[0.900,0.680,0.300],[1.000,0.400,0.800],[0.130,0.130,0.150],
+        [0.050,0.300,0.280],[0.900,0.300,0.050],[0.700,0.900,0.850],[0.250,0.150,0.080],[0.050,0.100,0.040],[0.300,0.160,0.100],
+        [0.200,0.300,0.450],[1.000,0.800,0.350],[0.450,0.150,0.250],[0.600,0.900,1.000],
+        [0.750,0.800,0.880],[0.030,0.220,0.240],[0.350,0.650,0.750],[0.550,0.450,0.350],
+        [0.170,0.030,0.230],[0.020,0.070,0.060],[0.075,0.038,0.045],[0.020,0.028,0.045]],
+  STC: [[1.000,0.950,0.850],[0.850,0.900,1.000],[0,0,0],[0.600,1.000,0.850],[0.200,1.000,0.820],[0,0,0],
+        [0,0,0],[1.000,0.600,0.200],[0.900,0.950,1.000],[0,0,0],[0.800,1.000,0.600],[0,0,0],
+        [0.900,0.970,1.000],[1.000,0.850,0.400],[0,0,0],[0.350,0.980,0.900],
+        [0,0,0],[0,0,0],[0.700,0.850,0.900],[1.000,0.920,0.800],
+        [0.780,0.960,0.980],[0.780,0.950,1.000],[1.000,0.930,0.815],[1.000,0.660,0.280]],
+  GLC: [[0.920,0.380,0.550],[0.500,0.600,0.800],[0,0,0],[0.500,0.350,0.800],[0.150,0.950,0.800],[0,0,0],
+        [0.300,0.900,0.750],[1.000,0.350,0.050],[0.200,1.000,0.600],[0,0,0],[0.400,0.900,0.300],[0.300,0.850,0.600],
+        [0.600,0.800,1.000],[1.000,0.700,0.200],[0.950,0.550,0.650],[0.100,0.500,1.000],
+        [1.000,0.850,0.550],[0.250,0.850,0.700],[0.100,0.450,0.600],[1.000,0.650,0.300],
+        [0.230,0.980,0.440],[0.100,0.850,0.900],[1.000,0.830,0.560],[0.100,0.850,0.950]],
+};
+function linToOklabJS(c){   // must mirror the GLSL linToOklab matrices exactly
+  const l=0.4122214708*c[0]+0.5363325363*c[1]+0.0514459929*c[2];
+  const m=0.2119034982*c[0]+0.6806995451*c[1]+0.1073969566*c[2];
+  const s=0.0883024619*c[0]+0.2817188376*c[1]+0.6299787005*c[2];
+  const l3=Math.cbrt(Math.max(l,0)), m3=Math.cbrt(Math.max(m,0)), s3=Math.cbrt(Math.max(s,0));
+  return [0.2104542553*l3+0.7936177850*m3-0.0040720468*s3,
+          1.9779984951*l3-2.4285922050*m3+0.4505937099*s3,
+          0.0259040371*l3+0.7827717662*m3-0.8086757660*s3];
+}
+function themeLabGLSL(){
+  const f = x => (Object.is(x,-0)?0:x).toFixed(9);
+  return Object.entries(THEME_LIN).map(([name, arr]) =>
+    'const vec3 ' + name + '_LAB[' + arr.length + '] = vec3[' + arr.length + '](' +
+    arr.map(c => { const L = linToOklabJS(c); return 'vec3(' + f(L[0]) + ',' + f(L[1]) + ',' + f(L[2]) + ')'; }).join(', ') +
+    ');').join('\n');
+}
+
+/* ===== v55c: バイオーム配色ランダム化(seedHash 由来・50% 既定/50% ランダム) =====
+   テーマホイールの 6 スロット(= その seed が使う 6 バイオーム)ぶんの OKLab パレットを CPU が事前計算し、
+   uSlot* uniform で渡す(per-pixel コスト不変)。各バイオーム ti は seedHash 由来のコインで既定色 or ランダム色。
+   uSeedHash の純関数 → HASH を入れれば同じ見た目を完全再現(canonicalId は sh を含むので一点性も自動整合)。 */
+const SLOT_CH = ['cool','warm','bg','ink','star','glow'];
+const SLOT_PAL = { cool:new Float32Array(18), warm:new Float32Array(18), bg:new Float32Array(18),
+                   ink:new Float32Array(18), star:new Float32Array(18), glow:new Float32Array(18) };
+function hash01_(a, b){                                   // (uint32 a, int b) → [0,1) 決定論ハッシュ
+  let x = (Math.imul((a>>>0) ^ 0x9e3779b9, 2654435761) ^ Math.imul((b|0) + 0x85ebca6b, 2246822519)) >>> 0;
+  x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13;
+  return (x >>> 0) / 4294967296;
+}
+const oklab_ = (L, C, hue) => [L, C*Math.cos(hue), C*Math.sin(hue)];   // OKLab: 明度 L + 彩度 C・色相 hue
+const TAU_ = 6.283185307179586;
+// バイオーム ti の 6 チャネル OKLab パレットを返す({cool,warm,bg,ink,star,glow: [L,a,b]})
+function biomePalette_(ti){
+  const coin = hash01_(seedHash, ti*17 + 1);
+  if(coin < 0.5){                                         // 既定色: THEME_LIN の linear 値を OKLab へ(GLSL bake と一致)
+    return { cool: linToOklabJS(THEME_LIN.COOL[ti]), warm: linToOklabJS(THEME_LIN.WARM[ti]),
+             bg: linToOklabJS(THEME_LIN.BG[ti]), ink: linToOklabJS(THEME_LIN.INKC[ti]),
+             star: linToOklabJS(THEME_LIN.STC[ti]), glow: linToOklabJS(THEME_LIN.GLC[ti]) };
+  }
+  // ランダム色: seedHash+ti 由来の一貫した配色系(base 色相 + cool→warm ランプ + 暗い地/濃いインク/明るい星/鮮やか発光)
+  const H = (s)=>hash01_(seedHash, ti*17 + s), J=(s)=>(H(s)-0.5);
+  const base = H(2)*TAU_, warmOff = 0.5 + 1.7*H(3), accOff = (H(4)-0.5)*2.4;
+  return {
+    cool: oklab_(0.40 + 0.10*J(5),  0.10 + 0.03*H(6),  base),
+    warm: oklab_(0.62 + 0.10*J(7),  0.12 + 0.03*H(8),  base + warmOff),
+    bg:   oklab_(0.10 + 0.05*H(9),  0.030,             base),
+    ink:  oklab_(0.08 + 0.04*H(10), 0.020,             base + Math.PI),
+    star: oklab_(0.88 + 0.08*J(11), 0.045,             base + warmOff*0.5),
+    glow: oklab_(0.66 + 0.10*J(12), 0.16 + 0.04*H(13), base + accOff),
+  };
+}
+// 6 スロット(ホイール)ぶんの OKLab パレットを SLOT_PAL に詰める。makeStyle から呼ぶ(P.themeBase/Stride 確定後)。
+function buildSlotPalettes(){
+  const base = P.themeBase||0, stride = P.themeStride||1;
+  for(let i=0;i<6;i++){
+    const ti = ((Math.round(base + i*stride) % 24) + 24) % 24;
+    const p = biomePalette_(ti);
+    for(let c=0;c<6;c++){ const v = p[SLOT_CH[c]]; const arr = SLOT_PAL[SLOT_CH[c]];
+      arr[i*3] = v[0]; arr[i*3+1] = v[1]; arr[i*3+2] = v[2]; }
+  }
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
+gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG.replace('//__THEME_LAB__', themeLabGLSL())));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){ console.error(gl.getProgramInfoLog(prog)); throw new Error('link'); }
+gl.useProgram(prog);
+const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+
+const U = {};
+for(const k of ['uAspect','uFlow','uCenter','uCellBase','uViewHeight','uLogZoom','uPxPerWorld','uDetail',
+                'uSeed','uSeedHash','uEnergy','uBiomeCoord','uLensC','uExport','uRenderScale',
+                'uFoldCell','uFoldFrac','uFoldScale','uLref','uFoldCell2','uFoldFrac2','uFoldScale2','uLref2',
+                'uFoldCellG','uFoldFracG','uFoldScaleG','uLrefG','uGenFrac',
+                'uFreq','uShape','uTone','uRegimePhase','uGenA','uGenB','uGrade','uThemeLock','uThemeBase','uThemeStride','uDotPitch','uPixel','uResY',
+                'uFinishTone','uFinishTex','uPalette','uScan','uLayer','uTileOrigin',
+                'uSlotCool','uSlotWarm','uSlotBg','uSlotInk','uSlotStar','uSlotGlow','uCursor','uCursorFX'])
+  U[k] = gl.getUniformLocation(prog, k);
+
+/* ===== seamless infinite-zoom LOOP: crossfade compositor + snapshot FBO ===== */
+// The field is SCALE-FOLLOWING (features stay screen-sized at every depth), so the deepest and widest views
+// show the SAME feature size — only theme/regime/exact-shapes differ. When the eased zoom crosses an edge we
+// wrap it to the other end and dissolve a snapshot of the pre-wrap frame over the live one, hiding the seam.
+// Precision-critical fold/theme/regime are untouched; this is a pure compositing layer (active only at a wrap).
+// LOOP_ZMAX capped at the depth where the field is still DETAIL-RICH. Deeper than ~1e6 (logZoom≈20) the
+// scale-following generators (worley/grid/SDF) leave only a few screen-sized cells → the view becomes a few
+// large angular blocks ("magnified pixels"). Wrapping before that keeps every loop view rich, and the deep
+// fades (25–33) never engage so metal/stars/ink stay alive to the deepest point. (Raise for more zoom-in.)
+// Loop range is capped at BOTH ends to the detail-rich / block-free band:
+//  · DEEP cap logZoom 10 (2^10 = 1024x): loops on zoom-IN when logZoom reaches 10 (per user request).
+//  · WIDE cap logZoom -8 (2^-8): zoom-OUT drops the octave count to ~1, so past ~lz-10 the field turns into a
+//    few coarse cells → the "tiles". lz-8 = rich nebula (clean); coarsens further out. Both ends crossfade-loop.
+const LOOP_ZMAX = 1024.0, LOOP_ZMIN = Math.pow(2,-8), LOOP_RATIO = LOOP_ZMAX / LOOP_ZMIN, WRAP_FADE_DUR = 1.0;
+// The ghost is NOT a frozen still: uSnapScale/uSnapOff keep it zooming AND panning at the live camera's rate
+// (camera-delta form — exact for zoom-to-cursor with a MOVING anchor, pinch, and drag; an anchor-based form
+// breaks on all three). The border falloff vignettes the ghost's rim when it legitimately shrinks (zoom-out
+// wrap / mid-fade reversal) instead of CLAMP_TO_EDGE streaking.
+const FRAG_COMP = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag;
+uniform sampler2D uTex; uniform float uAlpha;
+uniform float uSnapScale;   // wrapZoomRef / current zoom  (1.0 at the wrap frame -> pixel-exact start)
+uniform vec2  uSnapOff;     // camera-delta pan compensation
+uniform float uCPix;        // retro block size in buffer px (0 = off) — MUST match the live pass
+uniform vec2  uCRes;        // buffer resolution
+void main(){
+  // RETRO-PIXEL alignment (v36): re-pixelate the ghost onto the LIVE screen grid. Without this the ghost's
+  // BAKED block grid gets scaled by uSnapScale (e.g. 12px -> 8.9px blocks) and beats against the live 12px
+  // grid — a moiré stripe field for the whole fade. Quantising gl_FragCoord to the same blocks BEFORE the
+  // snap transform gives the composite ONE grid; the ghost's content zooms underneath it, same as live.
+  vec2 fc = gl_FragCoord.xy;
+  if(uCPix > 1.5) fc = (floor(fc/uCPix) + 0.5) * uCPix;
+  vec2 v = fc / uCRes;
+  vec2 suv = 0.5 + (v - 0.5)*uSnapScale + uSnapOff;
+  // fade ONLY outside the snapshot's footprint (b<0): masks CLAMP_TO_EDGE streaks when the ghost shrinks,
+  // while a full-screen ghost (s=1, b>=0 everywhere) keeps full alpha — no border ring at fade start.
+  float b = min(min(suv.x, 1.0-suv.x), min(suv.y, 1.0-suv.y));
+  frag = vec4(texture(uTex, suv).rgb, uAlpha * smoothstep(-0.06, 0.0, b));
+}`;
+const compProg = gl.createProgram();
+gl.attachShader(compProg, sh(gl.VERTEX_SHADER, VERT));
+gl.attachShader(compProg, sh(gl.FRAGMENT_SHADER, FRAG_COMP));
+gl.linkProgram(compProg);
+if(!gl.getProgramParameter(compProg, gl.LINK_STATUS)){ console.error(gl.getProgramInfoLog(compProg)); throw new Error('link-comp'); }
+const compTexLoc = gl.getUniformLocation(compProg, 'uTex');
+const compAlphaLoc = gl.getUniformLocation(compProg, 'uAlpha');
+const compScaleLoc = gl.getUniformLocation(compProg, 'uSnapScale');
+const compOffLoc   = gl.getUniformLocation(compProg, 'uSnapOff');
+const compPixLoc   = gl.getUniformLocation(compProg, 'uCPix');
+const compResLoc   = gl.getUniformLocation(compProg, 'uCRes');
+const snapTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, snapTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const snapFBO = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, snapFBO);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, snapTex, 0);
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.useProgram(prog);                    // restore the field program as current
+let snapW = 0, snapH = 0, wrapFade = 0;
+let wrapZoomRef = 1, wrapCRef = [0,0], wrapARef = 1;   // camera state at the wrap (drives the ghost's motion)
+
+/* ===== soft-focus BLUR pass =====
+   The field+post() shader is single-pass, so a true optical blur needs the frame in a texture first: the field
+   renders to blurFBO, then a golden-angle disc blur presents it to screen. Two independent radius sources:
+   - uRadius: per-seed uniform blur (STYLE.blur, dream/haze). Fraction of buffer height → live/export parity.
+   - uFocus (v51): 周辺フォーカス。画面中心は完全シャープ、縁に向かって被写界深度風にぼける。
+     レンズ同様の鑑賞用ライブ効果 — 書き出しには乗せない(exportPNG は 0 を渡す)。 */
+const FRAG_BLUR = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag;
+uniform sampler2D uTex; uniform vec2 uTexel; uniform float uRadius; uniform float uFocus;
+uniform vec2 uUVScale;   // 描画領域/テクスチャ実寸。grow-only 確保の blurTex は内容が左下サブ矩形(等寸なら 1,1)
+void main(){
+  vec2 q = vUv*2.0 - 1.0;                               // -1..1、等高線が画面比の楕円 = ビネット形
+  float rad = uRadius + uFocus * smoothstep(0.46, 1.13, length(q));   // v52: ぼかし帯を 1.2 倍内側まで(0.55,1.35 の /1.2)
+  vec2 suv = vUv * uUVScale;
+  vec3 c0 = texture(uTex, suv).rgb;
+  if(rad < 0.25){ frag = vec4(c0, 1.0); return; }       // 合焦域はタップ省略(帯域節約)。末尾の mix が 0.25 で 0 なので連続
+  vec3 sum = c0; float wsum = 1.0;
+  const int N = 16;
+  for(int i=0;i<N;i++){
+    float t = (float(i)+0.5)/float(N);
+    float rr = sqrt(t) * rad;                           // sqrt → uniform disc coverage
+    float a  = float(i) * 2.399963229728653;            // golden angle → even, banding-free tap spread
+    float w  = exp(-t*2.0);                             // gaussian-ish falloff
+    // タップはコンテンツ矩形内へ clamp(サブ矩形外の stale 内容を混ぜない)
+    vec2 tp = clamp(suv + vec2(cos(a),sin(a))*rr*uTexel, 0.5*uTexel, uUVScale - 0.5*uTexel);
+    sum += texture(uTex, tp).rgb * w;
+    wsum += w;
+  }
+  // rad→0.25 で寄与を 0 に漸減: 早期リターンと C0 連続になり、固定楕円の継ぎ目(bilinear 混合の段差
+  // ~10/255、粒状系仕上げで見える)を出さない
+  frag = vec4(mix(c0, sum/wsum, smoothstep(0.25, 1.0, rad)), 1.0);
+}`;
+const blurProg = gl.createProgram();
+gl.attachShader(blurProg, sh(gl.VERTEX_SHADER, VERT));
+gl.attachShader(blurProg, sh(gl.FRAGMENT_SHADER, FRAG_BLUR));
+gl.linkProgram(blurProg);
+if(!gl.getProgramParameter(blurProg, gl.LINK_STATUS)){ console.error(gl.getProgramInfoLog(blurProg)); throw new Error('link-blur'); }
+const blurTexLoc = gl.getUniformLocation(blurProg, 'uTex');
+const blurTexelLoc = gl.getUniformLocation(blurProg, 'uTexel');
+const blurRadiusLoc = gl.getUniformLocation(blurProg, 'uRadius');
+const blurFocusLoc = gl.getUniformLocation(blurProg, 'uFocus');
+const blurUVScaleLoc = gl.getUniformLocation(blurProg, 'uUVScale');
+const blurTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, blurTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const blurFBO = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, blurFBO);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, blurTex, 0);
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.useProgram(prog);                    // restore the field program as current
+let blurW = 0, blurH = 0;
+function ensureBlurTex(w, h){
+  // grow-only(v51c): renderScale ガバナは ±4-5%/フレームで昇降し canvas 実寸が連続変化する。等寸チェックだと
+  // その間フルスクリーン RGBA8 を毎フレーム再確保 = 予算超過中のフレームにドライバストールを上乗せしてしまう。
+  if(w <= blurW && h <= blurH) return;
+  const nw = Math.max(w, blurW), nh = Math.max(h, blurH);
+  gl.bindTexture(gl.TEXTURE_2D, blurTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, nw, nh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  blurW = nw; blurH = nh;
+}
+// disc-blur srcTex into the CURRENTLY BOUND framebuffer (caller sets viewport). radiusPx/focusPx in buffer px.
+// texW/texH = srcTex の実寸(省略時 w/h と等寸)。grow-only の blurTex は内容が左下 w×h のサブ矩形なので必ず実寸を渡す。
+function drawBlur(srcTex, w, h, radiusPx, focusPx, texW, texH){
+  const tw = texW || w, th = texH || h;
+  gl.useProgram(blurProg); gl.bindVertexArray(vao);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.uniform1i(blurTexLoc, 0);
+  gl.uniform2f(blurTexelLoc, 1.0/tw, 1.0/th);
+  gl.uniform2f(blurUVScaleLoc, w/tw, h/th);
+  gl.uniform1f(blurRadiusLoc, radiusPx);
+  gl.uniform1f(blurFocusLoc, focusPx || 0.0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.useProgram(prog);
+}
+
+/* ================= per-seed parameters (every number has a range) ================= */
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+let P = {};
+function makeParams(h){
+  const rnd = mulberry32(h>>>0); const R=(lo,hi)=>lo+(hi-lo)*rnd();
+  // BURN 12 draws: the removed cosine-palette params (palA-D) consumed draws 1-12. Keeping the draw count
+  // preserves how draws 13-24 (freq/shape/tone) map from seedHash. New Tier-2 personality knobs append
+  // AFTER draw 24 in a FIXED order — never insert draws mid-stream (it would reshuffle every later knob).
+  for(let i=0;i<12;i++) rnd();
+  P = {
+    freq:[R(0.75,1.3), R(5,12), R(4,9), R(1.4,2.6)],      // worleyJitterMul, stripe, contour, gridWarpGain (x/w reconnected v27)
+    shape:[R(1.0,3.0), R(6,12), R(3.2,5.2), R(1.8,3.0)],  // lineWidthPx, lineSpacing, warpAmp, foldAmp
+    tone:[R(0.7,1.4), R(-0.08,0.14), R(0.85,1.25), R(0.14,0.34)], // flowSpeedMul, metalBias(reconnected), contrast, meltK
+    // ---- appended draws 25+ (v27 variety knobs) ----
+    regimePhase: R(0, 18),                                // draw 25: regime-ladder rotation (CYCLE=18)
+    genA:[R(0.65,1.5), R(0.65,1.5), R(0.65,1.5), R(0.65,1.5)],   // 26-29: worley/sdf/truchet/grid personality
+    genB:[R(0.65,1.5), R(0.65,1.5), R(0.65,1.5), R(1.3,2.8)],    // 30-33: contour/stripe/lines + truchet width
+    grade:[R(1.06,1.24), R(0.6,1.5), R(0.14,0.28), R(0.72,0.84)],// 34-37: saturation/splitTone/bloom/vignette
+    themeLock: R(0.25,0.55),                              // draw 38: home-theme dominance (was fixed 0.35)
+    // THEME WHEEL (v29, bank 16→20 in v47): 20 biomes, 6 zoom slots per seed. base rotates the bank; a stride
+    // COPRIME to 20 guarantees 6 distinct biomes (k*stride mod 20 ≠ 0 for k=1..5 — note 5 no longer qualifies).
+    // 20 bases × 4 strides = 80 distinct wheels. Same draws 39/40 (no draw-count change; mapping intentionally
+    // rebased pre-launch — every seed's wheel changes, acceptable while the ledger is empty. WORKLOG v47).
+    themeBase:   Math.floor(R(0,24)) % 24,                // draw 39: wheel rotation 0..23 (bank=24 v56)
+    themeStride: [1,5,7,11][Math.floor(R(0,4)) % 4],      // draw 40: wheel step (coprime to 24 → 6 distinct slots)
+    // draw 41 (appended): double-exposure second-layer strength — QUALITY axis (seedHash-derived → partition of
+    // 2^32, NOT a headline multiplier). Weighted toward off so most worlds stay single-layer.
+    layer:       [0,0,0,0,0,0,0.45,0.6,0.75][Math.floor(R(0,9)) % 9],   // ~33% on
+  };
+}
+
+// ================= FINISH + PALETTE (seed-derived, INDEPENDENT of seedHash) =================
+// These are the honest combinatorial MULTIPLIERS (docs/DIVERSITY_EXPANSION.md §6): drawn from `seed` (the
+// vec2 Math.random source), NOT from mulberry32(seedHash). seed is recorded in the coordinate, so every
+// (finish, palette) is reproducible/ledger-verifiable. seedHash × homeSlot(6) × finish(8) × palette(7) ≈ 1.4×10¹²
+// distinct, distinguishable, reproducible designs — an honest "1兆通り以上".
+const FINISH_PRESETS = [
+  // rows: retro block-pixel rows (0 = smooth). tone:[sCurve, localContrast, satMul, bloomMul]. tex:[caMul, grainMul, halftoneAmt, posterizeLevels]
+  { n:'clean',  rows:0,   tone:[0.30,0.06,1.00,1.00], tex:[0.8,0.9,0.00, 0] }, // クリーンプリント
+  { n:'giclee', rows:0,   tone:[0.40,0.10,1.05,0.95], tex:[0.7,0.6,0.55, 0] }, // ジクレー版画 (halftone)
+  { n:'film',   rows:0,   tone:[0.26,0.05,0.95,1.10], tex:[1.2,2.2,0.00, 0] }, // 銀塩フィルム (grain heavy)
+  { n:'retro',  rows:100, tone:[0.34,0.07,1.10,0.90], tex:[0.6,0.0,0.00, 0] }, // 8bitレトロ (block pixel; grain auto-off)
+  { n:'copper', rows:0,   tone:[0.50,0.12,0.82,0.80], tex:[1.7,0.7,0.35, 0] }, // 高コントラスト銅版 (contrast + CA + halftone)
+  { n:'matte',  rows:0,   tone:[0.16,0.03,0.80,0.45], tex:[0.4,0.5,0.00, 0] }, // マット (flat)
+  { n:'neon',   rows:0,   tone:[0.36,0.08,1.28,1.65], tex:[1.4,0.6,0.00, 0] }, // ネオン発光 (glow)
+  { n:'riso',   rows:0,   tone:[0.44,0.11,0.70,0.75], tex:[0.9,0.7,0.45, 8] }, // リソ (posterize + halftone)
+  { n:'dream',  rows:0,   tone:[0.22,0.04,0.92,1.30], tex:[0.7,0.4,0.00, 0], blur:0.006 }, // ソフトフォーカス (ぼかし + soft bloom)
+  { n:'haze',   rows:0,   tone:[0.20,0.03,0.82,1.50], tex:[0.6,1.2,0.00, 0], blur:0.011 }, // 霞 (強ぼかし + 粒状の靄)
+  { n:'crt',    rows:0,   tone:[0.42,0.10,1.15,1.10], tex:[1.2,0.4,0.00, 0], scan:0.6 },   // CRT走査線 + 発色
+];
+const PAL_STRATS = [   // [hueRotate(rad), monoAmt]
+  [ 0.00, 0.00],  // identity
+  [ 0.60, 0.00],  // warm shift
+  [-0.70, 0.00],  // cool shift
+  [ 3.14, 0.00],  // complement
+  [ 2.09, 0.00],  // triad
+  [ 0.00, 0.85],  // mono
+  [-1.40, 0.20],  // split + slight desat
+];
+const styleHash01 = (a,b)=>{ const x = Math.sin(a*12.9898 + b*78.233) * 43758.5453; return x - Math.floor(x); };
+let STYLE = { tone:FINISH_PRESETS[0].tone, tex:FINISH_PRESETS[0].tex, rows:0, blur:0, scan:0, pal:PAL_STRATS[0], fi:0, pi:0 };
+function makeStyle(){
+  const fi = Math.floor(styleHash01(seed[0], seed[1]) * FINISH_PRESETS.length) % FINISH_PRESETS.length;
+  const pi = Math.floor(styleHash01(seed[1]*1.7 + 2.13, seed[0]*0.9 - 1.37) * PAL_STRATS.length) % PAL_STRATS.length;
+  const f = FINISH_PRESETS[fi];
+  STYLE = { tone:f.tone, tex:f.tex, rows:f.rows, blur:f.blur||0, scan:f.scan||0, pal:PAL_STRATS[pi], fi, pi };
+  buildSlotPalettes();   // v55c: この seed のホイール 6 バイオームの配色(既定 or seedHash ランダム)を確定
+}
+
+/* ================= state ================= */
+const BASE = 3.0;
+/* ===== integer coordinate fold (crisp infinite zoom-in): CPU f64 does the heavy floor ===== */
+const FOLD_F0   = 0.18;   // MUST equal GLSL `const float F0`
+const FOLD_BIAS = 1.0;    // MUST equal GLSL DETAIL_BIAS in main()
+const FOLD_SPAN = 6.0;    // STABLE span ceiling for the fold base (decoupled from adaptive uDetail)
+// Decompose A·2^L into (cell mod 2^32, frac in [0,1)) WITHOUT forming the huge single product.
+function foldDecompose(A, L){
+  if(L >= 0){
+    let ip = Math.floor(A);
+    let cell = BigInt(ip);
+    let frac = A - ip;                 // [0,1)
+    let remaining = L;
+    const STEP = 24;                   // frac*2^24 < 2^24, exact in f64
+    while(remaining > 0){
+      const s = Math.min(STEP, remaining);
+      frac *= Math.pow(2, s);
+      const k = Math.floor(frac);
+      cell = (cell << BigInt(s)) | BigInt(k);
+      frac -= k;
+      remaining -= s;
+    }
+    const cellMod = Number(((cell % 4294967296n) + 4294967296n) % 4294967296n);
+    return { cellMod, frac };
+  } else {
+    const S = A * Math.pow(2, L);       // small; A~O(tens), |L|<~50 → exact
+    const ip = Math.floor(S);
+    const cellMod = ((ip % 4294967296) + 4294967296) % 4294967296;
+    return { cellMod, frac: S - ip };
+  }
+}
+function buildFold(ax, ay, L, viewHeight){
+  const fx = foldDecompose(ax, L), fy = foldDecompose(ay, L);
+  const scale = viewHeight * FOLD_F0 * Math.pow(2, L);
+  return { cx: fx.cellMod >>> 0, cy: fy.cellMod >>> 0, fxv: fx.frac, fyv: fy.frac, scale };
+}
+let center = [Math.random()*40-20, Math.random()*40-20];
+// FROZEN integer cell base for the precision split — only re-set on randomize.
+// Keeping it fixed makes the residual (center - cellBase) continuous under pan/zoom,
+// so crossing an integer no longer reshuffles the field (fixes the "カクっと" jump).
+let cellBase = [Math.floor(center[0]), Math.floor(center[1])];
+let zoom = 0.18, targetZoom = 0.18, zoomAnchor = null;
+const ZOOM_EASE_HZ = 4.0;
+let seed = [Math.random()*100-50, Math.random()*100-50];
+let seedHash = (Math.random()*0xffffffff) >>> 0;
+makeParams(seedHash);
+makeStyle();   // finish + palette from seed (independent of seedHash)
+
+const MOTION = {
+  FLOW_IDLE:        0.045,
+  FLOW_ENERGY_K:    0.25,
+  FLOW_MAX_MULT:    1.30,
+  ENERGY_MAX:       1.0,
+  ENERGY_ATTACK_TAU:0.12,
+  ENERGY_TAU:       0.90,
+  SPEED_SOFT:       0.020,
+  VEL_SMOOTH_TAU:   0.05,
+};
+let flowPhase = 0, energy = 0, velSmooth = 0, zoomSlowS = 1;
+let energyTarget = 0;
+// central peek lens (cursor-follow lens removed per request)
+let lensCenter = 0, noCursorFX = false;
+// 周辺フォーカス(v51): 画面縁での最大ぼかし半径(バッファ高比)。レンズと同じ鑑賞用ライブ効果 — 書き出しには乗せない
+const FOCUS_BLUR = 0.010;
+const approach = (cur, tgt, tau, dt) => cur + (tgt-cur)*(1 - Math.exp(-dt/Math.max(tau,1e-4)));
+// v56: easeDrive(pointer速度→energy)は廃止。velSmooth は active/LOD ゲートにのみ使用。
+let cursorUV = null;   // v56: ホバーハイライトのカーソル位置([uvx, uvy] bottom-up) / null=ホバーなし
+
+/* ================= LOD governor (mipmap-style octaves by zoom) ================= */
+// MOTION_PENALTY now has real teeth: since autoOctaves() obeys uDetail, dropping uDetail under motion
+// directly cheapens the generators (the dominant cost). MOTION_FLOOR lets the still floor (OCT_MIN) ease
+// DOWN to ~2 octaves while actively dragging/zooming — invisible in motion, snaps back to full in ~0.3s.
+const LOD = { OCT_MIN: 3.0, ZOOM_K: 0.55, MOTION_PENALTY: 2.6, MOTION_FLOOR: 2.0 };   // (real ceiling = DEVICE_OCT_MAX)
+const IS_PHONE = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
+              || Math.min(screen.width, screen.height) < 520;
+const DEVICE_OCT_MAX = IS_PHONE ? 4.5 : 5.5;   // live LOD ceiling (perf); export uses DEVICE_OCT_MAX+1.5
+let detailSmooth = LOD.OCT_MIN;
+function computeDetail(dt){
+  const lz = Math.log2(zoom);
+  let target = LOD.OCT_MIN + Math.max(lz,0)*LOD.ZOOM_K;
+  const moving = (dragging?1:0)
+    + Math.min(velSmooth/MOTION.SPEED_SOFT, 1)
+    + Math.min((Math.hypot(panVel[0],panVel[1])/1000)/MOTION.SPEED_SOFT, 1)   // inertial glide counts as motion (px/s → px/ms)
+    + Math.abs(Math.log(targetZoom/zoom))*4.0;
+  const m = Math.min(moving,1);
+  target -= m*LOD.MOTION_PENALTY;
+  const floor = LOD.OCT_MIN - m*(LOD.OCT_MIN - LOD.MOTION_FLOOR);   // floor eases to MOTION_FLOOR while moving
+  target = Math.min(Math.max(target, floor), DEVICE_OCT_MAX);
+  detailSmooth += (target - detailSmooth)*(1 - Math.exp(-dt*6.0));
+  return detailSmooth;
+}
+
+let viewW = 1, viewH = 1, aspect = 1;
+const DPR_CAP = 1.5;   // live pixel-density cap (perf, all devices); export path is unaffected (own size)
+/* adaptive resolution governor (60fps safety net) */
+let renderScale = 1.0;
+const FRAME_BUDGET_MS = 15.5;
+let emaFrame = 16;
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP) * renderScale;
+  const w = Math.max(2, Math.round(window.innerWidth * dpr));
+  const h = Math.max(2, Math.round(window.innerHeight * dpr));
+  if(w === cvs.width && h === cvs.height) return;
+  cvs.width = w; cvs.height = h; viewW = w; viewH = h; aspect = w/h;
+}
+window.addEventListener('resize', resize, { passive:true });
+resize();
+
+function vh(){ return BASE / zoom; }
+function worldAt(ux, uy, z){
+  const H = BASE / z;
+  return [ center[0] + (ux-0.5)*aspect*H, center[1] + (uy-0.5)*H ];
+}
+function evUv(e){ return [ e.clientX/window.innerWidth, 1 - e.clientY/window.innerHeight ]; }
+
+/* ================= pointer / gestures ================= */
+const pts = new Map();
+let dragging = false, lastPan = null, lastMove = null, pinchDist = 0;
+// inertial pan (flick → glide): velocity is tracked in SCREEN px/s so a glide reads as constant on-screen
+// speed at any zoom depth (等速直線運動). Long friction tau ≈ near-uniform motion that settles back to 凪.
+let panVel = [0, 0], lastPanT = 0;
+const COAST_TAU = 2.0, COAST_STOP_PXS = 2.0, FLICK_MAX_GAP_MS = 120, PANVEL_EMA_S = 0.08;   // tau 3.5→2.0 (v30b): shorter glide per user; 1.2 = snappy map-app feel if wanted
+
+cvs.addEventListener('pointerdown', e=>{
+  try{ cvs.setPointerCapture(e.pointerId); }catch(_){}   // synthetic/vanished pointers must not abort the handler
+  pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if(pts.size === 1){ dragging = true; lastPan = [e.clientX, e.clientY];
+    panVel[0] = 0; panVel[1] = 0; lastPanT = performance.now(); }   // grabbing the world stops the glide
+  if(pts.size === 2){ const v=[...pts.values()]; pinchDist = Math.hypot(v[0][0]-v[1][0], v[0][1]-v[1][1]); }
+});
+cvs.addEventListener('pointermove', e=>{
+  const now = performance.now();
+  if(lastMove){
+    const dt = Math.max(now - lastMove.t, 8);
+    const rawSp = Math.hypot(e.clientX-lastMove.x, e.clientY-lastMove.y) / dt;
+    velSmooth = approach(velSmooth, rawSp, MOTION.VEL_SMOOTH_TAU, dt/1000);
+    // v56: マウス速度→energy(場の「掻き混ぜ」=パンチ+フロー加速)を廃止(ユーザー要望)。velSmooth は
+    // LOD/active ゲート用に残す(動作中の detail 調整)が、視覚的な攪拌アニメには結びつけない。
+  }
+  lastMove = { x:e.clientX, y:e.clientY, t:now };
+  cursorUV = [ e.clientX/window.innerWidth, 1 - e.clientY/window.innerHeight ];   // v56: ホバーハイライト用(bottom-up uv)
+
+  if(pts.has(e.pointerId)) pts.set(e.pointerId, [e.clientX, e.clientY]);
+
+  if(pts.size === 2){
+    const v=[...pts.values()];
+    const d = Math.hypot(v[0][0]-v[1][0], v[0][1]-v[1][1]);
+    const mx=(v[0][0]+v[1][0])/2, my=(v[0][1]+v[1][1])/2;
+    const mu=[ mx/window.innerWidth, 1 - my/window.innerHeight ];
+    if(pinchDist>0) zoomTo(mu[0], mu[1], d/pinchDist);
+    pinchDist = d;
+    return;
+  }
+  if(dragging && lastPan){
+    const dx=e.clientX-lastPan[0], dy=e.clientY-lastPan[1];
+    const wpp = vh()/window.innerHeight;
+    center[0] -= dx*wpp; center[1] += dy*wpp;   // 1:1 while the finger is down (zero lag)
+    lastPan = [e.clientX, e.clientY];
+    // track release velocity (screen px/s, short EMA smooths pointer-event quantisation)
+    const dts = Math.max((now - lastPanT)/1000, 0.001);
+    const k = 1 - Math.exp(-dts/PANVEL_EMA_S);
+    panVel[0] += (dx/dts - panVel[0])*k;
+    panVel[1] += (dy/dts - panVel[1])*k;
+    lastPanT = now;
+  }
+});
+function endPtr(e){
+  pts.delete(e.pointerId);
+  if(pts.size < 2) pinchDist = 0;
+  if(pts.size === 0){
+    dragging = false; lastPan = null;
+    // flick → coast: keep the tracked velocity ONLY if the pointer was still moving at release.
+    // A pause-then-release (deliberate stop) must not glide.
+    if(performance.now() - lastPanT > FLICK_MAX_GAP_MS){ panVel[0] = 0; panVel[1] = 0; }
+  }
+  else if(pts.size === 1){ const v=[...pts.entries()][0]; lastPan = [v[1][0], v[1][1]]; dragging = true;
+    panVel[0] = 0; panVel[1] = 0; lastPanT = performance.now(); }   // pinch→drag handover: no stale flick
+}
+cvs.addEventListener('pointerup', endPtr);
+cvs.addEventListener('pointercancel', endPtr);
+cvs.addEventListener('pointerleave', ()=>{ if(pts.size===0){ lastMove = null; } cursorUV = null; });   // v56: ホバー解除で highlight off
+
+function zoomTo(ux, uy, factor){
+  // ONE-WAY ZOOM (v37): zoom-out is disabled — the journey only ever goes INWARD (wheel-up and pinch-in are
+  // ignored). With the seamless loop this makes the piece an endless one-directional descent: dive past the
+  // deep end and re-emerge at the wide end, forever. Remove the next line to restore two-way zoom.
+  if(factor < 1.0) return;
+  // SEAMLESS LOOP: the field is precise within [LOOP_ZMIN, LOOP_ZMAX]; allow targetZoom to cross those
+  // edges a little (clamp wider) so the eased zoom can pass the limit and frame() can WRAP it to the other
+  // end with a crossfade. A small over-range margin keeps a fast scroll burst from running away.
+  targetZoom = Math.min(Math.max(targetZoom*factor, LOOP_ZMIN*0.01), LOOP_ZMAX*100);
+  zoomAnchor = [ux, uy];
+}
+cvs.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const uv = evUv(e);
+  zoomTo(uv[0], uv[1], Math.exp(-e.deltaY*0.0014));
+  // v56: スクロール速度→energy も廃止(マウス速度アニメ廃止に合わせ)。energy は入力速度から駆動しない。
+}, { passive:false });
+
+/* ================= controls ================= */
+function randomize(){
+  seed = [Math.random()*100-50, Math.random()*100-50];
+  seedHash = (Math.random()*0xffffffff) >>> 0;
+  makeParams(seedHash);
+  makeStyle();   // fresh finish + palette from the new seed
+  // spawn variety: ±200 world units samples many biome cells (wavelength ~25); cellBase re-base keeps the
+  // residual split exact. lz anchors cover all 5 regime centres + both loop-adjacent bands (loop = [-8, 10]).
+  center = [Math.random()*400-200, Math.random()*400-200];
+  cellBase = [Math.floor(center[0]), Math.floor(center[1])];   // re-base only on a fresh world
+  const lz = [-7.2,-4.4,-1.2,2.6,6.2,9.0][Math.floor(Math.random()*6)] + (Math.random()-0.5)*1.6;
+  zoom = targetZoom = Math.pow(2, lz);
+  zoomAnchor = null;
+  wrapFade = 0;   // kill any in-flight wrap ghost: after the teleport its motion transform would be garbage
+  panVel[0] = 0; panVel[1] = 0;   // and any in-flight glide
+  energyTarget = 0.5;
+}
+document.getElementById('rand').addEventListener('click', randomize);
+window.addEventListener('keydown', e=>{ if(e.key==='r'||e.key==='R') randomize(); });
+
+
+let toastTimer;
+function toast(msg){
+  const tEl = document.getElementById('toast');
+  tEl.textContent = msg; tEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>tEl.classList.remove('show'), 2200);
+}
+
+/* ================= uniforms + draw ================= */
+function setUniforms(asp, renderHeightPx, energyVal, detailVal){
+  const logZoom = Math.log2(zoom);
+
+  // FROZEN integer cell base (set at init/randomize) → residual stays continuous (no seam)
+  const icx = cellBase[0], icy = cellBase[1];
+  const fcx = center[0] - icx,        fcy = center[1] - icy;
+
+  // TRUE pixel density (full logZoom) drives LOD
+  const pxPerWorld = (renderHeightPx / BASE) * Math.pow(2, logZoom);
+
+  // ---- integer coordinate fold bases (CPU owns every floor; shader trusts uLref/uLref2) ----
+  const ax = fcx * FOLD_F0, ay = fcy * FOLD_F0;     // residual noise-space center (per axis)
+  const vhVal = vh();
+  const Dlz   = logZoom + FOLD_BIAS;
+  const Lref  = Math.floor(Dlz - FOLD_SPAN * 0.5);  // window base octave (may be negative)
+  const fwB   = buildFold(ax, ay, Lref, vhVal);
+  const octPhase = Math.log2(Math.max(pxPerWorld, 1.0));
+  const Lref2raw = Math.floor(octPhase) - 2;        // fine base octave (fracDispVec baseK)
+  const Lref2 = Math.max(Lref2raw, Lref - 1);       // clamp on zoom-out → uFoldScale2 can't blow up (kills speckle)
+  const ffB   = buildFold(ax, ay, Lref2, vhVal);
+  // generator fold base (scale-following): same ax/ay/vh → frac & cell share frequency (pan-seamless)
+  const GEN_BIAS = 1.0;
+  const LgenF = logZoom + GEN_BIAS - 0.5;
+  const Lgen  = Math.floor(LgenF);
+  const genFrac = LgenF - Lgen;
+  const fgB   = buildFold(ax, ay, Lgen, vhVal);
+
+  gl.uniform1f (U.uAspect, asp);
+  gl.uniform1f (U.uFlow, flowPhase);
+  gl.uniform2f (U.uCenter, fcx, fcy);            // SMALL residual
+  gl.uniform2i (U.uCellBase, icx, icy);          // exact integer base
+  gl.uniform1f (U.uViewHeight, vh());
+  gl.uniform1f (U.uLogZoom, logZoom);
+  gl.uniform1f (U.uPxPerWorld, pxPerWorld);
+  gl.uniform1f (U.uDetail, detailVal);
+  gl.uniform2f (U.uSeed, seed[0], seed[1]);
+  gl.uniform1ui(U.uSeedHash, seedHash >>> 0);
+  gl.uniform1f (U.uEnergy, energyVal);
+  gl.uniform2f (U.uBiomeCoord, center[0]*0.04, center[1]*0.04);   // BIOME_F must match GLSL
+  gl.uniform1f (U.uLensC, noCursorFX ? 0.0 : lensCenter);   // central lens off on export
+  // v56: ホバーハイライト — カーソル cc-space + 強度。書き出し(noCursorFX)/ホバーなしは 0。
+  if(!noCursorFX && cursorUV){ gl.uniform2f(U.uCursor, (cursorUV[0]-0.5)*asp, cursorUV[1]-0.5); gl.uniform1f(U.uCursorFX, 1.0); }
+  else { gl.uniform1f(U.uCursorFX, 0.0); }
+  gl.uniform1f (U.uExport, 0.0);
+  gl.uniform2f (U.uTileOrigin, 0.0, 0.0);       // 単発既定。タイル書き出しは exportPNG が上書き
+  gl.uniform1f (U.uRenderScale, renderScale);   // grain fades with live resolution (anti-pixel on upscale)
+  gl.uniform2ui(U.uFoldCell,  fwB.cx, fwB.cy);
+  gl.uniform2f (U.uFoldFrac,  fwB.fxv, fwB.fyv);
+  gl.uniform1f (U.uFoldScale, fwB.scale);
+  gl.uniform1i (U.uLref,      Lref);
+  gl.uniform2ui(U.uFoldCell2, ffB.cx, ffB.cy);
+  gl.uniform2f (U.uFoldFrac2, ffB.fxv, ffB.fyv);
+  gl.uniform1f (U.uFoldScale2, ffB.scale);
+  gl.uniform1i (U.uLref2,     Lref2);
+  gl.uniform2ui(U.uFoldCellG, fgB.cx, fgB.cy);
+  gl.uniform2f (U.uFoldFracG, fgB.fxv, fgB.fyv);
+  gl.uniform1f (U.uFoldScaleG, fgB.scale);
+  gl.uniform1i (U.uLrefG,     Lgen);
+  gl.uniform1f (U.uGenFrac,   genFrac);
+  gl.uniform4fv(U.uFreq, P.freq); gl.uniform4fv(U.uShape, P.shape); gl.uniform4fv(U.uTone, P.tone);
+  gl.uniform1f (U.uRegimePhase, P.regimePhase);
+  gl.uniform4fv(U.uGenA, P.genA); gl.uniform4fv(U.uGenB, P.genB);
+  gl.uniform4fv(U.uGrade, P.grade); gl.uniform1f(U.uThemeLock, P.themeLock);
+  gl.uniform1f (U.uThemeBase, P.themeBase); gl.uniform1f(U.uThemeStride, P.themeStride);
+  gl.uniform4fv(U.uFinishTone, STYLE.tone); gl.uniform4fv(U.uFinishTex, STYLE.tex); gl.uniform2fv(U.uPalette, STYLE.pal);
+  gl.uniform3fv(U.uSlotCool, SLOT_PAL.cool); gl.uniform3fv(U.uSlotWarm, SLOT_PAL.warm); gl.uniform3fv(U.uSlotBg, SLOT_PAL.bg);
+  gl.uniform3fv(U.uSlotInk, SLOT_PAL.ink); gl.uniform3fv(U.uSlotStar, SLOT_PAL.star); gl.uniform3fv(U.uSlotGlow, SLOT_PAL.glow);
+  gl.uniform1f (U.uScan, STYLE.scan || 0);
+  gl.uniform1f (U.uLayer, P.layer || 0);
+  gl.uniform1f (U.uDotPitch, renderHeightPx/55);   // halftone pitch scales with buffer height (screen/export consistent)
+  // retro block size: EVEN INTEGER px is load-bearing — GPU derivative quads are 2x2 blocks aligned to even
+  // coords, so even-integer blocks are never straddled by a quad → zero fwidth inside blocks → no seam lines.
+  gl.uniform1f (U.uPixel, STYLE.rows > 0 ? Math.max(2, 2*Math.round(renderHeightPx/STYLE.rows/2)) : 0.0);   // block-pixel rows now per-seed (finish preset)
+  gl.uniform1f (U.uResY, renderHeightPx);
+}
+
+// render the CURRENT (pre-wrap) field view into the snapshot texture, so the loop wrap can dissolve it out
+function ensureSnapTex(){
+  if(snapW !== cvs.width || snapH !== cvs.height){
+    gl.bindTexture(gl.TEXTURE_2D, snapTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, cvs.width, cvs.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    snapW = cvs.width; snapH = cvs.height;
+  }
+}
+function snapshotField(detailVal){
+  ensureSnapTex();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, snapFBO);
+  gl.viewport(0,0,cvs.width,cvs.height);
+  gl.useProgram(prog); gl.bindVertexArray(vao);
+  setUniforms(aspect, cvs.height, energy, detailVal);   // current zoom/center (still pre-wrap)
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+// v55: wrap ヒッチ解消 — 直前フレームが blurFBO に描いた「場」をそのまま GPU blit でスナップショットへコピー。
+// 全オクターブの場を wrap のためだけに再描画していた 1 フレームのコスト(重い seed で可視のカクつき)を消す。
+// 使えるのは直前フレームが (a) ブラーパス経由(blurTex=純粋な場) かつ (b) 同解像度 かつ (c) ゴースト未合成の時
+// だけ。それ以外(初回数フレーム/リサイズ直後/フェード直後の再交差)は従来の再描画にフォールバック。
+let blurFieldValid = false, blurFieldW = 0, blurFieldH = 0;
+function captureSnapshot(detailVal){
+  if(blurFieldValid && blurFieldW === cvs.width && blurFieldH === cvs.height){
+    ensureSnapTex();
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, blurFBO);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, snapFBO);
+    gl.blitFramebuffer(0,0,cvs.width,cvs.height, 0,0,cvs.width,cvs.height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    return;
+  }
+  snapshotField(detailVal);
+}
+
+let prevT = performance.now();
+// RS_FLOOR = 0.6 → adaptive down-rendering RE-ENABLED (perf valve). During heavy drag/zoom the governor drops
+// resolution to keep 60fps; it snaps back to full-res the instant you stop (idle ramp). Safe now: the "tiles"
+// turned out to be WIDE-END content coarseness (fixed by LOOP_ZMIN) not renderScale, and the v17 grain-fade
+// stops the grain from turning chunky when down-rendered — so a down-render just looks slightly soft, never tiled.
+const IDLE_FPS = 30, IDLE_INTERVAL_MS = 1000/IDLE_FPS, INPUT_HOLD_MS = 350, RS_FLOOR = 0.6;
+// RETRO PIXEL MODE: vertical "pixel" rows on screen (old-game chunkiness). Resolution-relative → exports get the
+// same relative pixel size. NO LONGER GLOBAL: the block-pixel row count is now per-seed via the finish preset
+// (FINISH_PRESETS[*].rows — the 'retro' preset uses 100, all others 0 = smooth). Set STYLE.rows drives uPixel.
+function frame(now){
+  requestAnimationFrame(frame);                         // always reschedule, even when we skip this vsync
+  // ---- activity gate: render at vsync WHILE interacting; throttle to IDLE_FPS when idle (凪) ----
+  // Idle = no drag/zoom/recent pointer move, motion energy decayed, lenses settled. The field still
+  // evolves (very slow flow) + the central lens is always on, so we keep drawing — just at IDLE_FPS.
+  const zooming = Math.abs(Math.log(targetZoom/zoom)) > 1e-4;
+  const recentInput = !!lastMove && (now - lastMove.t) < INPUT_HOLD_MS;
+  const coasting = !dragging && Math.hypot(panVel[0], panVel[1]) > COAST_STOP_PXS;
+  const active = dragging || zooming || recentInput || coasting
+              || energy > 0.02
+              || lensCenter < 0.995 || wrapFade > 0;   // keep drawing while the loop crossfade runs
+  if(!active && (now - prevT) < IDLE_INTERVAL_MS){ return; }   // idle → skip the draw this vsync
+  const dt = Math.min((now - prevT)/1000, 0.05);
+  const interval = now - prevT;
+  prevT = now;
+  // adaptive resolution governor — only judge cadence while actively animating (idle throttle would fool it)
+  if(active){
+    emaFrame += (interval - emaFrame) * 0.1;
+    if(emaFrame > FRAME_BUDGET_MS*1.25 && renderScale > RS_FLOOR) renderScale -= 0.05;
+    else if(emaFrame < FRAME_BUDGET_MS*0.8 && renderScale < 1.0) renderScale += 0.04;   // recover crispness faster
+  } else if(renderScale < 1.0){
+    renderScale = Math.min(1.0, renderScale + 0.05);   // idle is throttled & cheap → ramp back to full crispness
+  }
+  resize();                              // size the canvas now → snapshot + live frame share one resolution
+  const detail = computeDetail(dt);
+  // ---- inertial pan: after a flick the world glides at the release speed (screen-constant = 等速直線運動
+  // at any zoom depth) with a long, gentle friction that settles back to 凪. Grabbing (pointerdown) stops it.
+  if(coasting){
+    const wpp = vh()/window.innerHeight;
+    center[0] -= panVel[0]*wpp*dt; center[1] += panVel[1]*wpp*dt;   // same sign convention as live drag
+    const fr = Math.exp(-dt/COAST_TAU);
+    panVel[0] *= fr; panVel[1] *= fr;
+    if(Math.hypot(panVel[0], panVel[1]) <= COAST_STOP_PXS){ panVel[0] = 0; panVel[1] = 0; }
+  }
+  // eased zoom (smooth, slow transitions) with zoom-to-cursor re-anchor
+  if(zoomAnchor && Math.abs(Math.log(targetZoom/zoom)) > 1e-4){
+    const prev = zoom;
+    zoom = Math.exp(Math.log(zoom) + (Math.log(targetZoom)-Math.log(zoom))*(1 - Math.exp(-dt*ZOOM_EASE_HZ)));
+    const b = worldAt(zoomAnchor[0], zoomAnchor[1], prev);
+    const a = worldAt(zoomAnchor[0], zoomAnchor[1], zoom);
+    center[0] += b[0]-a[0]; center[1] += b[1]-a[1];
+  }
+  // ---- SEAMLESS LOOP: wrap deepest↔widest, dissolve the seam ----
+  // The field is scale-following, so feature SIZE is identical across the wrap; a snapshot of the pre-wrap
+  // view crossfaded out over the post-wrap view hides the theme/regime/shape change. Wrap zoom AND targetZoom
+  // by the SAME ratio so the in-progress ease (log distance to target) is preserved across the seam.
+  // Guarded on wrapFade===0: a boundary re-cross while a fade is running (reversal right after a wrap) would
+  // overwrite the snapshot mid-fade and pop the old ghost out in one frame — instead the pending wrap waits
+  // and the ongoing fade is retired 3x faster (see the fade decay below). zoomTo's over-range clamp keeps the
+  // brief out-of-band zoom valid.
+  if((zoom > LOOP_ZMAX || zoom < LOOP_ZMIN) && wrapFade === 0){
+    captureSnapshot(detail);                                // capture the pre-wrap frame (v55: blit if last frame's blurTex is usable)
+    const f = (zoom > LOOP_ZMAX) ? (1.0/LOOP_RATIO) : LOOP_RATIO;
+    zoom *= f; targetZoom *= f;                             // deepest→widest (or widest→deepest)
+    // v54: 螺旋階段 — 最深→広域の wrap は「1周の完了」。同じ土地の広域に戻る(=旅程が完全ループする)
+    // のではなく、ハッシュ由来の決定論ジャンプで**新しい土地**の広域に出る。無限生成ゲームの原則
+    // (内容 = 純関数(seed, 座標)・新規性は座標を進めることで得る)のズーム軸適用: パン方向は既に
+    // 無限(fold 2^32 セル)なので、1周ごとに横へずれる螺旋にすれば風景は毎回変わる。
+    // ジャンプ量 300-900(バイオーム波長 ~25 の十数倍)で biome/テーマ近傍が確実に入れ替わる。
+    // 決定論: 同じ wrap 地点(biome セル × seedHash)からは常に同じ次の土地 → 旅程ごと再現可能。
+    // パーマリンク/claim は center+cellBase を持つので整合は自動。ゴーストの溶暗が旧深部→新広域を覆う。
+    if(f < 1.0){
+      const jr = mulberry32(((Math.floor(center[0]*0.04)*374761393) ^ (Math.floor(center[1]*0.04)*668265263) ^ (seedHash|0)) >>> 0);
+      const ang = jr()*6.283185307179586, dist = 300 + 600*jr();
+      center[0] += Math.cos(ang)*dist; center[1] += Math.sin(ang)*dist;
+      cellBase = [Math.floor(center[0]), Math.floor(center[1])];   // 再基底 — spawn(randomize)と同型。ghost が覆う wrap 時のみ安全
+    }
+    wrapZoomRef = zoom; wrapCRef = [center[0], center[1]]; wrapARef = aspect;   // ghost motion reference (ジャンプ後の center 基準 = delta 0 から開始)
+    wrapFade = 1.0;
+    // Snap the LOD to its post-wrap steady target NOW: the ghost covers the live layer at alpha=1 this frame,
+    // so the octave jump is invisible. Otherwise detailSmooth eases 5.5→~3 THROUGH the fade — a second
+    // animation stacked on the dissolve (and the cross-blend would sweep with it).
+    detailSmooth = Math.min(Math.max(LOD.OCT_MIN + Math.max(Math.log2(zoom),0)*LOD.ZOOM_K, LOD.OCT_MIN), DEVICE_OCT_MAX);
+  }
+  energy = approach(energy, energyTarget, MOTION.ENERGY_ATTACK_TAU, dt);
+  energyTarget = approach(energyTarget, 0, MOTION.ENERGY_TAU, dt);
+  // BUGFIX (v26): velSmooth was only ever written in pointermove, so after a fast flick it stayed high
+  // forever → computeDetail kept the MOTION_PENALTY applied and the at-rest view never regained full
+  // octaves. Decay it whenever input has stopped (recentInput already false ~0.35s after the last move).
+  if(!recentInput) velSmooth = approach(velSmooth, 0, 0.15, dt);
+  const flowMult = Math.min(MOTION.FLOW_MAX_MULT, 1 + MOTION.FLOW_ENERGY_K*energy);
+  // deeper zoom → slower evolution; EASED (0.4s) so the tempo doesn't step ×3.8 the instant of a loop wrap
+  const zoomSlowT = 1 / (1 + 0.28*Math.max(Math.log2(zoom), 0));
+  zoomSlowS = approach(zoomSlowS, zoomSlowT, 0.4, dt);
+  flowPhase += MOTION.FLOW_IDLE * flowMult * dt * zoomSlowS;
+  // central lens: always on (gentle fade-in for grace)
+  lensCenter += (1.0 - lensCenter) * (1 - Math.exp(-dt/0.6));
+  // live は常にブラーパス経由(v51): 周辺フォーカス(FOCUS_BLUR)がレンズのフェードインと同期して立ち上がり、
+  // 画面縁だけがぼける。blur seed(dream/haze)の per-seed 一様ぼかしはその上に加算される。
+  const focusPx = FOCUS_BLUR * lensCenter * cvs.height;
+  const useBlur = STYLE.blur > 0 || focusPx > 0.25;   // シェーダー早期リターン(0.25)と同じ閾値 = パス切替の瞬間も無段差
+  if(useBlur){ ensureBlurTex(cvs.width, cvs.height); gl.bindFramebuffer(gl.FRAMEBUFFER, blurFBO); }
+  else       { gl.bindFramebuffer(gl.FRAMEBUFFER, null); }
+  gl.viewport(0,0,cvs.width,cvs.height);
+  gl.useProgram(prog); gl.bindVertexArray(vao);
+  setUniforms(aspect, cvs.height, energy, detail);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // v55: この直後 blurTex は「純粋な場」(useBlur 時)。次フレームの wrap がこれを blit で流用できる。
+  // 非ブラー経路(default FB)や、下のゴースト合成が走ると blurTex は場でなくなる → 無効化して再描画へ倒す。
+  if(useBlur){ blurFieldValid = true; blurFieldW = cvs.width; blurFieldH = cvs.height; }
+  else       { blurFieldValid = false; }
+  // dissolve the pre-wrap ghost over the live frame — the ghost keeps ZOOMING and PANNING at the live
+  // camera's exact rate (camera-delta transform), so the seam is a moving melt, not a freeze-then-dissolve.
+  // v51b: 合成はブラー提示の「前」(useBlur 時は blurFBO 内)で行う。後に描くと wrap の瞬間に
+  // 「縁がぼけたライブ面 → 未ブラーのゴースト」へ一瞬で切り替わり縁がカクッと跳ねる(実測: コーナー
+  // 勾配 0.58→1.20)。前に合成すれば周辺フォーカスも dream/haze の一様ぼかしも合成結果ごと乗る。
+  if(wrapFade > 0){
+    blurFieldValid = false;   // v55: ゴーストを blurFBO に合成すると blurTex は「場」でなくなる → 次 wrap は再描画へ
+    gl.useProgram(compProg); gl.bindVertexArray(vao);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, snapTex);
+    const af = wrapFade*wrapFade*(3.0 - 2.0*wrapFade);   // smoothstep alpha: zero slope at both ends (no terminal pop)
+    gl.uniform1i(compTexLoc, 0); gl.uniform1f(compAlphaLoc, af);
+    gl.uniform1f(compScaleLoc, wrapZoomRef / zoom);
+    gl.uniform2f(compOffLoc, (center[0]-wrapCRef[0])*wrapZoomRef/(BASE*wrapARef),
+                             (center[1]-wrapCRef[1])*wrapZoomRef/BASE);
+    gl.uniform1f(compPixLoc, STYLE.rows > 0 ? cvs.height/STYLE.rows : 0.0);   // ghost shares the LIVE pixel grid (per-seed rows)
+    gl.uniform2f(compResLoc, cvs.width, cvs.height);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.disable(gl.BLEND);
+    // 3x-fast retire while a re-cross wrap is pending (zoom already out of band) or aspect changed mid-fade
+    const fast = (zoom > LOOP_ZMAX || zoom < LOOP_ZMIN || Math.abs(aspect - wrapARef) > 0.01*wrapARef) ? 3.0 : 1.0;
+    wrapFade = Math.max(0.0, wrapFade - fast * dt / WRAP_FADE_DUR);
+  }
+  if(useBlur){
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0,0,cvs.width,cvs.height);
+    drawBlur(blurTex, cvs.width, cvs.height, STYLE.blur * cvs.height, focusPx, blurW, blurH);
+  }
+}
+requestAnimationFrame(frame);
+
+/* ================= high-res export (offscreen FBO) ================= */
+/* ---- PNG coordinate embedding (tEXt) — library-free provenance: the exported PNG carries its own coordinate,
+   so a physical print can always be matched back to the ledger even if the filename is lost. Keys/values are
+   Latin-1 (ASCII here): RDM-Coord = the permalink (opens → restores the exact view). See VALIDATION_BUILD_SPEC §3.3. */
+function crc32_(bytes){
+  let t = crc32_.t;
+  if(!t){ t = crc32_.t = []; for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; } }
+  let crc = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++) crc = (t[(crc ^ bytes[i]) & 0xFF] ^ (crc>>>8))>>>0;
+  return (crc ^ 0xFFFFFFFF)>>>0;
+}
+function textChunk_(keyword, text){
+  const enc = s => { const a=[]; for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); a.push(c<256?c:63); } return a; };  // Latin-1
+  const type = [116,69,88,116];                                   // 'tEXt'
+  const data = enc(keyword).concat([0], enc(text));
+  const len = data.length;
+  const out = new Uint8Array(12 + len);
+  const dv = new DataView(out.buffer);
+  dv.setUint32(0, len);                                            // big-endian length (PNG)
+  out.set(type, 4); out.set(data, 8);
+  dv.setUint32(8 + len, crc32_(type.concat(data)));               // CRC over type+data
+  return out;
+}
+function pngInsertText_(buf, entries){
+  const src = new Uint8Array(buf);
+  const IHDR_END = 8 + 25;                                         // signature(8) + IHDR chunk(25) → tEXt goes right after
+  const chunks = entries.map(e => textChunk_(e[0], e[1]));
+  const out = new Uint8Array(src.length + chunks.reduce((n,c)=>n+c.length, 0));
+  out.set(src.subarray(0, IHDR_END), 0);
+  let off = IHDR_END;
+  for(const c of chunks){ out.set(c, off); off += c.length; }
+  out.set(src.subarray(IHDR_END), off);
+  return out;
+}
+function exportPNG(tw, th, label){
+  if(gl.isContextLost()){ toast('描画コンテキストが失われています。ページを再読み込みしてください'); return; }
+  const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+  toast('…');   // wording-free progress cue (on-screen text is RANDOMIUM only)
+
+  // v55: TILED export — tw/th が MAX_TEXTURE_SIZE を超えても分割レンダで原寸を書き切る(旧: 無言で縮小
+  // = 入稿事故のもと、を廃止)。uTileOrigin で各タイルに全画像座標を渡すので cc(場)も screen-locked 効果
+  // (ハーフトーン/グレイン/走査線)もタイル境界で完全連続 = 1 枚に整う。uResY/uAspect は常に全画像寸法。
+  // ブラー seed(dream/haze)はタイルにパディングを付けて描き、ブラー後に中央を切り出す → 境界に継ぎ目なし。
+  // 単発射程内(tw,th ≤ maxTex かつ非ブラー)は 1 タイル = 従来と同一(uTileOrigin=0 で export parity 不変)。
+  noCursorFX = true;
+  const doBlur = STYLE.blur > 0;
+  const pad = doBlur ? Math.ceil(STYLE.blur * th) + 2 : 0;   // ブラー半径ぶんの糊しろ
+  const tile = Math.max(16, maxTex - 2*pad);                 // パディング込みで maxTex に収まるタイル辺
+  const px = new Uint8Array(tw*th*4);                        // 全画像バッファ(GL bottom-up)
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);   // LINEAR: ブラーのタップ補間に必要(非ブラーは readPixels 直読みなので無影響)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fbo = gl.createFramebuffer();
+  let tex2 = null, fbo2 = null;
+  function cleanup(){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.deleteFramebuffer(fbo); gl.deleteTexture(tex);
+    if(fbo2) gl.deleteFramebuffer(fbo2); if(tex2) gl.deleteTexture(tex2); }
+
+  let ok = true;
+  for(let ty=0; ty<th && ok; ty+=tile){
+    for(let tx=0; tx<tw && ok; tx+=tile){
+      const tW = Math.min(tile, tw - tx), tH = Math.min(tile, th - ty);
+      // padded region (clamped to image) so blur taps see neighbours; non-blur → pad 0 = exact tile
+      const ox = Math.max(0, tx - pad),  oy = Math.max(0, ty - pad);
+      const ex = Math.min(tw, tx + tW + pad), ey = Math.min(th, ty + tH + pad);
+      const pW = ex - ox, pH = ey - oy;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, pW, pH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      if(gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE){ ok=false; break; }
+      gl.viewport(0,0,pW,pH);
+      gl.useProgram(prog); gl.bindVertexArray(vao);
+      setUniforms(tw/th, th, 0.0, DEVICE_OCT_MAX + 1.5);   // aspect/height は常に全画像寸法(screen-locked fx 連続)
+      gl.uniform1f(U.uExport, 1.0);
+      gl.uniform1f(U.uRenderScale, 1.0);                   // export = full grain regardless of live renderScale
+      gl.uniform2f(U.uTileOrigin, ox, oy);                 // このタイルの全画像原点(bottom-up)
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      let srcFBO = fbo;
+      const readOx = tx - ox, readOy = ty - oy;            // 実タイルはパディング内側のこのオフセット
+      if(doBlur){
+        if(!tex2){ tex2 = gl.createTexture(); fbo2 = gl.createFramebuffer(); }
+        gl.bindTexture(gl.TEXTURE_2D, tex2);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, pW, pH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo2);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex2, 0);
+        gl.viewport(0,0,pW,pH);
+        drawBlur(tex, pW, pH, STYLE.blur * th, 0);         // 半径は全画像 th 基準(周辺フォーカスは PNG に乗せない)
+        srcFBO = fbo2;
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, srcFBO);
+      const tilePx = new Uint8Array(tW*tH*4);
+      gl.readPixels(readOx, readOy, tW, tH, gl.RGBA, gl.UNSIGNED_BYTE, tilePx);
+      for(let row=0; row<tH; row++){                       // 実タイルを全画像 px(bottom-up)へ配置
+        px.set(tilePx.subarray(row*tW*4, (row+1)*tW*4), ((ty+row)*tw + tx)*4);
+      }
+    }
+  }
+  noCursorFX = false;
+  cleanup();
+  if(!ok){ toast('書き出しに失敗しました'); return; }
+
+  // WebGL タイル分割は maxTex 超でも原寸を描くが、最終合成は 2D canvas 1 枚(tw×th)。2D canvas には面積/辺の
+  // 上限があり(iOS Safari は歴史的に ~16.7MP=4096²)、超えると createImageData/putImageData が例外 or 無言で
+  // ブランクになる。旧クランプ廃止でこの経路が露出したため、**実際に合成できたかを 1 画素で検証**し、失敗なら
+  // 無言ブランク PNG を '✓' で配らず '⚠' で止める(書き出しはデスクトップ運用が前提、PRINT_EXPORT_ROADMAP §3.2)。
+  const oc = document.createElement('canvas'); oc.width = tw; oc.height = th;
+  const ctx = oc.getContext('2d');
+  let assembled = false;
+  try {
+    const img = ctx.createImageData(tw, th);
+    const rb = tw*4;
+    for(let y=0;y<th;y++){ const src=(th-1-y)*rb; img.data.set(px.subarray(src, src+rb), y*rb); }
+    ctx.putImageData(img, 0, 0);
+    // 検証: 中心画素が非ブランクの元データを持つのに canvas 側が全ゼロなら、上限超で描けていない
+    const mx=tw>>1, my=th>>1, sp=((th-1-my)*tw + mx)*4;
+    const srcNonBlank = (px[sp]|px[sp+1]|px[sp+2]) !== 0;
+    const cvp = ctx.getImageData(mx, my, 1, 1).data;
+    const cvNonBlank = (cvp[0]|cvp[1]|cvp[2]) !== 0;
+    assembled = !(srcNonBlank && !cvNonBlank);
+  } catch(_){ assembled = false; }
+  if(!assembled){ toast('⚠'); return; }   // この端末の 2D canvas 上限超 — デスクトップで書き出すか判型を下げる
+  oc.toBlob(b=>{
+    if(!b){ toast('書き出しに失敗しました（メモリ不足の可能性）'); return; }
+    const cj = coordJSON();                                        // export renders the live state → coordinate matches the image
+    const finalize = blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `randomium-${label}-${cj.sh}-${tw}x${th}.png`;   // sh in the name = partial match even if metadata is stripped
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+      toast('✓');   // wording-free success cue
+    };
+    b.arrayBuffer().then(buf=>{
+      try{
+        const withMeta = pngInsertText_(buf, [
+          ['RDM-Coord',     encodeCoord(cj)],                       // the permalink — opens → restores this exact view
+          ['RDM-CID',       cj.cid],                                // one-of-a-kind key (台帳照合)
+          ['RDM-Finish',    cj.finish],
+          ['Software',      'RANDOMIUM v55'],
+          ['Creation Time', cj.ts]
+        ]);
+        finalize(new Blob([withMeta], {type:'image/png'}));
+      }catch(_){ finalize(b); }                                     // any failure → download the plain PNG (never block export)
+    }).catch(()=>finalize(b));
+  }, 'image/png');
+  // GL resources are already freed (cleanup() ran after the tile loop; toBlob only touches the CPU canvas).
+}
+document.querySelectorAll('.bar [data-w]').forEach(btn=>{
+  btn.addEventListener('click', ()=> exportPNG(+btn.dataset.w, +btn.dataset.h, btn.dataset.label));
+});
+
+/* ================= claim funnel — 需要検証マシン (この座標を控える) =================
+   The interactive site IS the funnel: explore → find a view → register interest in it. A claim captures the full
+   REPRODUCIBLE coordinate + its canonical identity (the one-of-a-kind key) + the resolved look + qualifying
+   answers, so demand is measured on the exact thing people want. See business/MVP_VALIDATION.md and
+   docs/VALIDATION_BUILD_SPEC.md.
+   BACKEND: set CLAIM_ENDPOINT to a GAS Web App (docs/backend/claims.gs) to collect claims AND check availability
+   server-side (the authoritative one-of-a-kind registry). Empty = local-only (localStorage + CSV export, and the
+   buyer's coordinate PERMALINK is copied to the clipboard). Wire the URL later without touching anything else. */
+const CLAIM_ENDPOINT = '';   // e.g. 'https://script.google.com/macros/s/AKfy.../exec'
+const PREORDER_URL   = '';   // e.g. a Stripe Payment Link (with ?client_reference_id=<cid>) — shown only for a rare 1of1 candidate
+const PAL_NAMES = ['原色','暖色','寒色','補色','トライアド','モノクロ','スプリット'];
+
+// ---- CANONICAL IDENTITY — the one-of-a-kind key. The rounding granularity below IS the "same coordinate" line
+// for the 再販禁止 promise (景表法 §3-3): 1px / 1-frame differences must NOT count as separate 1of1s. center 12
+// digits / lz 4 digits (perceptually indistinguishable) + the look. MUST stay identical to GAS canonicalId_().
+const CANON = { CENTER_DIGITS: 12, LZ_DIGITS: 4 };   // 粒度定数を1箇所に集約 (docs/VALIDATION_BUILD_SPEC.md §2.1/§5.2)
+function canonicalId(c){
+  const k = [c.sh, c.center[0].toFixed(CANON.CENTER_DIGITS), c.center[1].toFixed(CANON.CENTER_DIGITS),
+             c.lz.toFixed(CANON.LZ_DIGITS), c.finish, c.palette, c.layer].join('|');
+  let h = 2166136261>>>0;                                          // FNV-1a 32-bit
+  for(let i=0;i<k.length;i++){ h ^= k.charCodeAt(i); h = Math.imul(h,16777619)>>>0; }
+  return 'C' + h.toString(16).padStart(8,'0');
+}
+
+// The full reproducible coordinate (PRINT_EXPORT_ROADMAP.md Gap 2). seed is INCLUDED — finish/palette/layer are
+// derived from it via makeStyle, so recording it makes the exact look reproducible & ledger-verifiable.
+function coordJSON(){
+  const c = {
+    v:2, ts:new Date().toISOString(),
+    sh: (seedHash>>>0).toString(16).padStart(8,'0'),
+    seed:[seed[0], seed[1]], center:[center[0], center[1]], cellBase:[cellBase[0], cellBase[1]],
+    zoom: zoom, lz: Math.log2(zoom), flow: flowPhase,
+    finish: FINISH_PRESETS[STYLE.fi].n, palette: PAL_NAMES[STYLE.pi] || String(STYLE.pi),
+    layer: +(P.layer||0), theme:{ base:P.themeBase, stride:P.themeStride }
+  };
+  c.cid = canonicalId(c);
+  return c;
+}
+
+// ---- coordinate PERMALINK (provenance backbone): encode the reproducible coordinate into the URL hash; opening
+// that URL restores the exact view + look. cellBase is REQUIRED (not recoverable from center). f64 uses the shortest
+// round-trip toString (roadmap §4.1: exact). seed→finish/palette is deterministic via makeStyle, so seed = look.
+function encodeCoord(o){
+  return '#' + ['v2','sh='+o.sh,'s='+o.seed.join(','),'c='+o.center.join(','),
+                'cb='+o.cellBase.join(','),'z='+o.zoom,'t='+(o.flow||0)].join('&');
+}
+function decodeCoord(hash){
+  try{
+    const p = {}; hash.replace(/^#/,'').split('&').forEach(kv=>{ const i=kv.indexOf('='); if(i>0) p[kv.slice(0,i)]=kv.slice(i+1); });
+    if(!p.sh || !p.c || !p.cb) return null;
+    const num = s => s.split(',').map(Number);
+    return { sh:p.sh, seed:num(p.s), center:num(p.c), cellBase:num(p.cb).map(Math.round), zoom:+p.z, flow:+p.t||0 };
+  }catch(_){ return null; }
+}
+function restoreFromCoord(o){                                       // the twin of randomize(): set state from a coordinate
+  seed = [o.seed[0], o.seed[1]];
+  seedHash = parseInt(o.sh,16)>>>0;
+  makeParams(seedHash); makeStyle();
+  center = [o.center[0], o.center[1]];
+  cellBase = [o.cellBase[0], o.cellBase[1]];
+  zoom = targetZoom = o.zoom; zoomAnchor = null;
+  wrapFade = 0; panVel[0]=0; panVel[1]=0;
+  flowPhase = o.flow || 0; energyTarget = 0;
+}
+
+// Rarity = uncommon LOOK features co-occurring. Deterministic → a third party can recompute it (honest, §MVP-5).
+function rarityInfo(){
+  const feats=[]; let s=0;
+  const fn = FINISH_PRESETS[STYLE.fi].n;
+  const fw = {dream:1.0, haze:1.3, crt:0.8, retro:0.6, neon:0.5, riso:0.4};
+  if(fw[fn]){ s+=fw[fn]; feats.push(fn); }
+  if((P.layer||0)>0){ s+=0.8; feats.push('二重露光'); }
+  if(STYLE.pi===5){ s+=0.7; feats.push('モノクロ'); }
+  else if(STYLE.pi===3||STYLE.pi===6){ s+=0.3; }
+  const bandOn = (((seed[0]*2.7)%1)+1)%1 > 0.6;
+  if(bandOn){ const b=Math.max(0,Math.min(1,(Math.sin(Math.log2(zoom)*0.7 + seed[1]*4.0)-0.35)/0.37));
+    if(b>0.4){ s+=b*0.6; feats.push('網点帯'); } }
+  return { score:s, rare:s>=1.3, feats };
+}
+// edition HINT from rarity — a likelihood, NOT a promise (the operator decides the real edition on selection).
+function editionHint(r){ return r.rare ? '1of1候補' : (r.score>=0.6 ? 'ltd候補' : 'open候補'); }
+
+const claimSheet = document.getElementById('claim');
+const claimBtn   = document.getElementById('claimBtn');
+const claimSub   = document.getElementById('claimSub');
+const claimAvail = document.getElementById('claimAvail');
+const claimSubmitBtn = document.getElementById('claimSubmit');
+let pendingCoord = null;
+
+// edition-honest dynamic copy (景表法 §3-3: 断定しない・未確定を明示) + fake-door honesty (先行予約 ≠ 購入)
+function renderClaimCopy(r){
+  const line = r.rare
+    ? 'この座標は珍しい組合せです。<b>一点物（1of1）候補</b>として選定される可能性があります。'
+    : (r.score>=0.6
+        ? '<b>限定エディション</b>の候補になりうる座標です。'
+        : '人気の相は<b>定番（オープン）</b>として販売される場合があります（同じ座標が複数の方に届くこともあります）。');
+  claimSub.innerHTML = line
+    + '<br><span class="fine">エディション（一点物／限定／定番）は運営の選定で決まり、この時点では確定していません。'
+    + 'これは購入ではなく、<b>先行予約のご希望登録</b>です — 商品化はこれからで、準備でき次第メールでご案内します。</span>';
+}
+function updatePreorder(r){
+  const pre = document.getElementById('claimPreorder');
+  const wantsHigh = document.getElementById('q_budget').value === '一点物として1万円〜';
+  const show = !!PREORDER_URL && r.rare && wantsHigh;
+  pre.style.display = show ? 'block' : 'none';
+  if(show) pre.href = PREORDER_URL + (PREORDER_URL.indexOf('?')<0?'?':'&') + 'client_reference_id=' + encodeURIComponent(pendingCoord ? pendingCoord.cid : '');
+}
+async function checkAvailability(cid){
+  claimAvail.textContent=''; claimAvail.className='avail'; claimSubmitBtn.disabled=false;
+  if(!CLAIM_ENDPOINT) return;                                       // local-only: no registry to consult
+  claimAvail.textContent='確認中…';
+  try{
+    const res = await fetch(CLAIM_ENDPOINT + '?cid=' + encodeURIComponent(cid));
+    const j = await res.json();
+    if(j && j.available===false){
+      claimAvail.textContent = (j.status==='retired') ? 'この座標は販売済み・再販はありません' : 'この座標は確保申請があります（先着優先）';
+      claimAvail.className='avail taken';
+      if(j.status==='retired') claimSubmitBtn.disabled=true;        // sold-out 1of1 → cannot register
+    } else { claimAvail.textContent=''; }
+  }catch(_){ claimAvail.textContent=''; }                           // fail-soft: never block the modal on a network error
+}
+function openClaim(){
+  const r = rarityInfo();
+  const tags = [`仕上げ: ${FINISH_PRESETS[STYLE.fi].n}`, `配色: ${PAL_NAMES[STYLE.pi]}`];
+  if((P.layer||0)>0) tags.push('二重露光');
+  document.getElementById('claimMeta').innerHTML =
+    tags.map(t=>`<span class="tag">${t}</span>`).join('') + (r.rare ? `<span class="tag rare">★ レアな組合せ</span>` : '');
+  renderClaimCopy(r);
+  pendingCoord = coordJSON();
+  updatePreorder(r);
+  claimSheet.classList.add('open'); claimSheet.setAttribute('aria-hidden','false');
+  checkAvailability(pendingCoord.cid);                              // best-effort registry check (server = authoritative)
+}
+function closeClaim(){ claimSheet.classList.remove('open'); claimSheet.setAttribute('aria-hidden','true'); }
+claimBtn.addEventListener('click', openClaim);
+document.getElementById('claimCancel').addEventListener('click', closeClaim);
+document.getElementById('q_budget').addEventListener('change', ()=> updatePreorder(rarityInfo()));
+claimSheet.addEventListener('click', e=>{ if(e.target===claimSheet) closeClaim(); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && claimSheet.classList.contains('open')) closeClaim(); });
+
+function loadClaims(){ try{ return JSON.parse(localStorage.getItem('randomium_claims')||'[]'); }catch(_){ return []; } }
+function saveClaims(a){ try{ localStorage.setItem('randomium_claims', JSON.stringify(a)); }catch(_){} }
+
+claimSubmitBtn.addEventListener('click', async ()=>{
+  const email   = document.getElementById('q_email').value.trim();
+  const consent = document.getElementById('q_consent').checked;
+  if(email && !consent){ toast('メール受信の同意にチェックを入れてください'); return; }
+  const r    = rarityInfo();
+  const base = pendingCoord || coordJSON();
+  const rec = Object.assign({}, base, {
+    claimId: (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (String(Date.now())+Math.random().toString(16).slice(2)),
+    budget: document.getElementById('q_budget').value,
+    size:   document.getElementById('q_size').value,
+    use:    document.getElementById('q_use').value,
+    edition_wish: document.getElementById('q_edition').value,
+    edition_hint: editionHint(r),
+    email, consent, rarity: +r.score.toFixed(2)
+  });
+  if(consent) rec.consentAt = new Date().toISOString();            // 特定電子メール法: record the opt-in time
+  // persist locally, but DROP email from the at-rest local copy when a server will hold it (minimise PII, §6.3)
+  const local = Object.assign({}, rec); if(CLAIM_ENDPOINT) delete local.email;
+  const all = loadClaims(); all.push(local); saveClaims(all);
+  // give the buyer their coordinate PERMALINK (minimal COA) — NOT the raw record → no PII on the clipboard
+  const coordUrl = location.origin + location.pathname + encodeCoord(base);
+  try{ await navigator.clipboard.writeText(coordUrl); }catch(_){}
+  let taken = false;
+  if(CLAIM_ENDPOINT){   // text/plain keeps it a SIMPLE request → no CORS preflight (works with a GAS Web App)
+    try{
+      const res = await fetch(CLAIM_ENDPOINT, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(rec)});
+      const j = await res.json(); if(j && j.available===false) taken = true;
+    }catch(_){ /* saved locally regardless */ }
+  }
+  closeClaim();
+  toast(taken
+    ? 'この座標は既に確保済み（近い別座標を探してみてください）'
+    : '✓ 先行予約のご希望を受け付けました（まだご購入手続きではありません・座標リンクをコピー）');
+  document.getElementById('q_email').value=''; document.getElementById('q_consent').checked=false;
+});
+
+// operator: dump all collected claims as CSV to paste into designs/ledger/design-ledger.csv (cid = 照合主キー)
+document.getElementById('claimExport').addEventListener('click', ()=>{
+  const a = loadClaims();
+  if(!a.length){ toast('保存済みの座標はまだありません'); return; }
+  const cols = ['cid','ts','sh','seed','center','cellBase','zoom','lz','flow','finish','palette','layer',
+                'budget','size','use','edition_wish','edition_hint','email','consent','consentAt','rarity','claimId'];
+  const esc = v => { const s = Array.isArray(v) ? v.join(' ') : (v==null ? '' : String(v)); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const csv = [cols.join(',')].concat(a.map(r=>cols.map(c=>esc(r[c])).join(','))).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob);
+  const link = document.createElement('a'); link.href = url; link.download = 'randomium-claims.csv'; link.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  toast(`${a.length} 件を書き出しました`);
+});
+
+// rarity emphasis on the Register button (brutalist: inverted black + ★) — nudges claiming at the right moment.
+setInterval(()=>{ claimBtn.classList.toggle('rare', rarityInfo().rare); }, 600);
+
+// live coordinate readout in the bottom band (b8-06 composition): the on-screen provenance signature.
+// 4 Hz is plenty — coordJSON+canonicalId are a few hundred ops. Values match the claim/permalink exactly.
+const crdX = document.getElementById('crdX'), crdY = document.getElementById('crdY');
+const crdZ = document.getElementById('crdZ'), crdH = document.getElementById('crdH');
+setInterval(()=>{ try{
+  const c = coordJSON();
+  crdX.textContent = c.center[0].toFixed(3);
+  crdY.textContent = c.center[1].toFixed(3);
+  crdZ.textContent = (c.lz>=0?'+':'') + c.lz.toFixed(2);
+  crdH.textContent = c.cid.slice(1);
+}catch(_){} }, 250);
+
+// BOOT: restore a shared coordinate from the URL hash (provenance permalink), else keep the random world.
+// Runs after all definitions but before the first frame() callback fires → no flash of the random world.
+if(location.hash.length > 1){ const o = decodeCoord(location.hash); if(o) restoreFromCoord(o); }
+
+window.addEventListener('error', e=>{ console.error(e.error||e.message); });
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<title>RANDOMIUM — LEDGER 全記録</title>
+<!--
+  公開台帳 — 「検証可能性をそのまま見せる」ページ。デザイン言語: ブルータリスト (designs/brand/brutalist/take3/b8v3-05-ledger.png)。
+  designs/ledger/design-ledger.csv を fetch して生の表で表示するだけ (サーバ/DB 無し・表示専用・台帳が唯一の正)。
+  公開対象は approved(準備中)/released(販売中)/retired(完売・再販なし)。candidate(検討中)/rejected(没) は作品未確定のため非表示。
+-->
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:#fff; color:#000;
+    font-family:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif; }
+  a{ color:#000; }
+  .band{ border-bottom:2px solid #000; display:flex; align-items:center; gap:18px; padding:12px 18px; }
+  .wordmark{ font-weight:800; font-size:19px; letter-spacing:0.01em; text-decoration:none; color:#000; }
+  .nav{ margin-left:auto; display:flex; gap:16px; font-size:12.5px; font-weight:700; letter-spacing:0.04em; }
+  main{ max-width:1040px; margin:0 auto; padding:36px 18px 64px; }
+  h1{ font-size:30px; font-weight:800; margin:0 0 22px; letter-spacing:0.01em; }
+  .tablewrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; border:2px solid #000; }
+  th, td{ border:1.5px solid #000; padding:11px 12px; text-align:left; font-size:13px; vertical-align:top; }
+  th{ font-weight:700; letter-spacing:0.05em; white-space:nowrap; }
+  td.mono{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; white-space:nowrap; }
+  .retired{ font-weight:800; text-decoration:underline; }
+  .prep{ color:#555; }
+  .empty{ border:2px solid #000; padding:22px; font-size:13px; line-height:1.85; }
+  .foot{ margin:20px 0 0; font-size:12px; color:#333; line-height:1.8; }
+  .foot b{ color:#000; }
+  .note{ margin:8px 0 0; font-size:10.5px; color:#666; }
+  @media (max-width:640px){ th, td{ padding:9px 8px; font-size:11.5px; } td.mono{ font-size:10.5px; } h1{ font-size:24px; } }
+</style>
+</head>
+<body>
+  <header class="band">
+    <a class="wordmark" href="index.html">RANDOMIUM</a>
+    <nav class="nav"><a href="index.html">EXPLORE</a><a href="ledger.html">LEDGER</a></nav>
+  </header>
+  <main>
+    <h1>LEDGER — 全記録</h1>
+    <div id="body"><p class="empty">台帳を読み込んでいます…</p></div>
+    <p class="foot"><b>同じ座標を入力すれば、誰でも同じ景色を再現できます。</b> 各作品は座標キー (canonical id) で台帳と突合でき、1of1 は完売後、同一座標・同一書き出し設定では再販されません。</p>
+    <p class="note" id="skipnote"></p>
+  </main>
+<script>
+'use strict';
+function parseCSV(text){
+  const rows=[]; let row=[], field='', q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else q=false; } else field+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(field); field=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; if(field!==''||row.length){ row.push(field); rows.push(row); row=[]; field=''; } }
+    else field+=c;
+  }
+  if(field!==''||row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const body = document.getElementById('body');
+const STATUS_LABEL = { approved:['準備中','prep'], released:['販売中',''], retired:['完売・再販なし','retired'] };
+
+fetch('designs/ledger/design-ledger.csv', {cache:'no-store'})
+  .then(r=>{ if(!r.ok) throw new Error('ledger fetch '+r.status); return r.text(); })
+  .then(text=>{
+    const rows = parseCSV(text);
+    if(rows.length < 2){
+      body.innerHTML = '<div class="empty">まだ記録はありません。最初の座標は、これから発見されます。 <a href="index.html">探索する →</a></div>';
+      return;
+    }
+    const head = rows[0]; const gi = n => head.indexOf(n);
+    let skipped = 0;
+    const items = [];
+    for(let i=1;i<rows.length;i++){
+      const rec = rows[i]; const g = n => { const k=gi(n); return k>=0 ? (rec[k]||'') : ''; };
+      const st = g('status');
+      if(!STATUS_LABEL[st]){ skipped++; continue; }        // candidate / rejected / 空行 は非公開
+      items.push({ id:g('id'), cid:g('canonical_id'), x:g('world_x'), y:g('world_y'), z:g('log_zoom'),
+                   edition:g('edition')||'TBD', st, date:g('date') });
+    }
+    if(!items.length){
+      body.innerHTML = '<div class="empty">公開中の記録はまだありません。最初の座標は、これから発見されます。 <a href="index.html">探索する →</a></div>';
+      if(skipped) document.getElementById('skipnote').textContent = '※ 選定中 (candidate)・没 (rejected) の行は作品未確定のため表示していません。';
+      return;
+    }
+    items.reverse();                                        // 台帳は追記式 → 新しい記録を上に
+    const tr = it => {
+      const [label, cls] = STATUS_LABEL[it.st];
+      const idCell = it.cid ? '<a href="proof.html?cid='+encodeURIComponent(it.cid)+'">'+esc(it.id)+'</a>' : esc(it.id);
+      return '<tr><td class="mono">'+idCell+'</td>'
+        + '<td class="mono">X '+esc(it.x)+' / Y '+esc(it.y)+' / Z '+esc(it.z)+'</td>'
+        + '<td>'+esc(it.edition)+'</td>'
+        + '<td class="'+cls+'">'+label+'</td>'
+        + '<td class="mono">'+esc(it.date)+'</td></tr>';
+    };
+    body.innerHTML = '<div class="tablewrap"><table>'
+      + '<tr><th>ID</th><th>COORDINATE</th><th>EDITION</th><th>STATUS</th><th>DATE</th></tr>'
+      + items.map(tr).join('')
+      + '</table></div>';
+    if(skipped) document.getElementById('skipnote').textContent = '※ 選定中 (candidate)・没 (rejected) の行は作品未確定のため表示していません。';
+  })
+  .catch(err=>{
+    body.innerHTML = '<div class="empty">台帳を読み込めませんでした（'+esc(err.message)+'）。ホスティング環境でお試しください。</div>';
+  });
+</script>
+</body>
+</html>
