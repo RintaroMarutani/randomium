@@ -1991,8 +1991,17 @@ let center = [Math.random()*40-20, Math.random()*40-20];
 // Keeping it fixed makes the residual (center - cellBase) continuous under pan/zoom,
 // so crossing an integer no longer reshuffles the field (fixes the "カクっと" jump).
 let cellBase = [Math.floor(center[0]), Math.floor(center[1])];
+// v56e: パンの滑走目標。ドラッグは targetCenter を動かし、center はフレームで等速に追走する(ズームの
+// targetZoom↔zoom と対称)。teleport(randomize/wrap/restore)では必ず center と同期させる。
+let targetCenter = [center[0], center[1]];
 let zoom = 0.18, targetZoom = 0.18, zoomAnchor = null;
-const ZOOM_EASE_HZ = 4.0;
+const ZOOM_EASE_HZ = 4.0;                                  // 着地直前の減速(ease-out タイル)強度
+// v56e: スクロール(ズーム)を「等速直線運動」化する巡航速度。log(zoom) 空間の一定速度(nat-log/秒)。
+// 連続スクロール中はこの速度でスーッと等速に進み、残距離が ZOOM_RATE/ZOOM_EASE_HZ を切った所だけ減速して着地。
+// ループ全長 = log(LOOP_RATIO) ≈ 12.48 nat なので 2.2 で全周 ≈ 5.7 秒の滑らかな巡航。
+const ZOOM_RATE = 2.2;
+// v56e: targetZoom が現 zoom より先へ出られる上限(log/nat)。離した後の滑走を有界化(≈ ZOOM_MAX_LEAD/ZOOM_RATE 秒)。
+const ZOOM_MAX_LEAD = 1.2;
 let seed = [Math.random()*100-50, Math.random()*100-50];
 let seedHash = (Math.random()*0xffffffff) >>> 0;
 makeParams(seedHash);
@@ -2072,12 +2081,23 @@ let dragging = false, lastPan = null, lastMove = null, pinchDist = 0;
 // speed at any zoom depth (等速直線運動). Long friction tau ≈ near-uniform motion that settles back to 凪.
 let panVel = [0, 0], lastPanT = 0;
 const COAST_TAU = 2.0, COAST_STOP_PXS = 2.0, FLICK_MAX_GAP_MS = 120, PANVEL_EMA_S = 0.08;   // tau 3.5→2.0 (v30b): shorter glide per user; 1.2 = snappy map-app feel if wanted
+// v56e: パンも「等速直線運動」化(スクロールと対称)。ドラッグは targetCenter を動かし、center は
+// スクリーン相対の一定速度 PAN_RATE(画面高/秒)で追走 → 着地直前だけ PAN_EASE_HZ で減速して停止。
+// 速度がスクリーン基準なので深ズームでも体感一定。commanded な追走のみ = 離した後に勝手に走る慣性は無し
+// (v56c の「フリックで滑らない」を維持: center は targetCenter=最後の指位置 を超えて進まない)。
+const PAN_RATE = 10.0, PAN_EASE_HZ = 12.0;
+// v56e: targetCenter が center より先へ出られる上限(画面高の割合)。ズームの ZOOM_MAX_LEAD と同趣旨だが、
+// パンの入力(指の変位)は 1 ジェスチャで物理的に有界なので離脱後の滑走は自然に有界(≈ gap/PAN_RATE 秒)。
+// よってこの上限は「暴走を止める高いバックストップ」に留める: 低すぎる(0.6)と超過した指変位を破棄して
+// 速いスワイプで world が指より短く動く(張り付き/undershoot 回帰)ため、現実的ジェスチャでは binding しない 2.0 に。
+const PAN_MAX_LEAD = 2.0;
 
 cvs.addEventListener('pointerdown', e=>{
   try{ cvs.setPointerCapture(e.pointerId); }catch(_){}   // synthetic/vanished pointers must not abort the handler
   pts.set(e.pointerId, [e.clientX, e.clientY]);
   if(pts.size === 1){ dragging = true; lastPan = [e.clientX, e.clientY];
-    panVel[0] = 0; panVel[1] = 0; lastPanT = performance.now(); }   // grabbing the world stops the glide
+    panVel[0] = 0; panVel[1] = 0; lastPanT = performance.now();
+    targetCenter[0] = center[0]; targetCenter[1] = center[1]; }   // v56e: 掴んだ瞬間にパン滑走を停止(gap→0=グライド即スキップ・ジャンプ無し)。掴み直しの逆ドラッグでデッドゾーンが出ないように
   if(pts.size === 2){ const v=[...pts.values()]; pinchDist = Math.hypot(v[0][0]-v[1][0], v[0][1]-v[1][1]); }
 });
 cvs.addEventListener('pointermove', e=>{
@@ -2106,7 +2126,11 @@ cvs.addEventListener('pointermove', e=>{
   if(dragging && lastPan){
     const dx=e.clientX-lastPan[0], dy=e.clientY-lastPan[1];
     const wpp = vh()/window.innerHeight;
-    center[0] -= dx*wpp; center[1] += dy*wpp;   // 1:1 while the finger is down (zero lag)
+    targetCenter[0] -= dx*wpp; targetCenter[1] += dy*wpp;   // v56e: 指は目標を動かす。center はフレームで等速追走
+    // v56e: リード上限 — target が center から画面高×PAN_MAX_LEAD 以上離れないよう引き戻す(離脱後の過剰滑走=慣性感を防止)
+    const glx = targetCenter[0]-center[0], gly = targetCenter[1]-center[1];
+    const gld = Math.hypot(glx, gly), lead = vh()*PAN_MAX_LEAD;
+    if(gld > lead){ const s = lead/gld; targetCenter[0] = center[0]+glx*s; targetCenter[1] = center[1]+gly*s; }
     lastPan = [e.clientX, e.clientY];
     // track release velocity (screen px/s, short EMA smooths pointer-event quantisation)
     const dts = Math.max((now - lastPanT)/1000, 0.001);
@@ -2124,7 +2148,8 @@ function endPtr(e){
     panVel[0] = 0; panVel[1] = 0;   // v56b: 離した瞬間に停止(慣性グライド廃止 — フリックしても滑らない)
   }
   else if(pts.size === 1){ const v=[...pts.entries()][0]; lastPan = [v[1][0], v[1][1]]; dragging = true;
-    panVel[0] = 0; panVel[1] = 0; lastPanT = performance.now(); }   // pinch→drag handover: no stale flick
+    panVel[0] = 0; panVel[1] = 0; lastPanT = performance.now();
+    targetCenter[0] = center[0]; targetCenter[1] = center[1]; }   // pinch→drag handover: no stale flick + v56e: パン滑走も停止(残余グライドを持ち越さない)
 }
 cvs.addEventListener('pointerup', endPtr);
 cvs.addEventListener('pointercancel', endPtr);
@@ -2139,6 +2164,11 @@ function zoomTo(ux, uy, factor){
   // edges a little (clamp wider) so the eased zoom can pass the limit and frame() can WRAP it to the other
   // end with a crossfade. A small over-range margin keeps a fast scroll burst from running away.
   targetZoom = Math.min(Math.max(targetZoom*factor, LOOP_ZMIN*0.01), LOOP_ZMAX*100);
+  // v56e: 相対リード上限 — 等速巡航(ZOOM_RATE)は速度が gap に依らないため、上限が無いと連続/強スクロールで
+  // gap が絶対クランプまで累積し、指を離した後に数秒間ズームし続ける(=v56c で廃止した慣性ドリフト感 + その間
+  // LOD がボケたまま)。target を現 zoom の exp(ZOOM_MAX_LEAD) 倍までに制限すると、巡航中は gap=1.2>crossover(0.55)
+  // で速度 2.2 を維持しつつ、離脱後の滑走は ZOOM_MAX_LEAD/ZOOM_RATE≈0.55s に有界化(旧 ease-out と同等の即着地感)。
+  targetZoom = Math.min(targetZoom, zoom*Math.exp(ZOOM_MAX_LEAD));
   zoomAnchor = [ux, uy];
 }
 cvs.addEventListener('wheel', e=>{
@@ -2157,6 +2187,7 @@ function randomize(){
   // spawn variety: ±200 world units samples many biome cells (wavelength ~25); cellBase re-base keeps the
   // residual split exact. lz anchors cover all 5 regime centres + both loop-adjacent bands (loop = [-8, 10]).
   center = [Math.random()*400-200, Math.random()*400-200];
+  targetCenter = [center[0], center[1]];   // v56e: 新世界へスナップ(パン滑走ゼロから開始)
   cellBase = [Math.floor(center[0]), Math.floor(center[1])];   // re-base only on a fresh world
   const lz = [-7.2,-4.4,-1.2,2.6,6.2,9.0][Math.floor(Math.random()*6)] + (Math.random()-0.5)*1.6;
   zoom = targetZoom = Math.pow(2, lz);
@@ -2304,8 +2335,10 @@ function frame(now){
   // evolves (very slow flow) + the central lens is always on, so we keep drawing — just at IDLE_FPS.
   const zooming = Math.abs(Math.log(targetZoom/zoom)) > 1e-4;
   const recentInput = !!lastMove && (now - lastMove.t) < INPUT_HOLD_MS;
-  const coasting = !dragging && Math.hypot(panVel[0], panVel[1]) > COAST_STOP_PXS;
-  const active = dragging || zooming || recentInput || coasting
+  // v56e: パンの等速追走中(center が targetCenter へ滑走中)は active に保つ → 着地まで vsync 描画。
+  // 閾値は画面高の 0.1%(≈1px)。ドラッグ中は下の dragging でも active なので離した後の残差滑走を主に拾う。
+  const panGliding = (targetCenter[0]-center[0])**2 + (targetCenter[1]-center[1])**2 > (vh()*1e-3)**2;
+  const active = dragging || zooming || recentInput || panGliding
               || energy > 0.02
               || lensCenter < 0.995 || wrapFade > 0;   // keep drawing while the loop crossfade runs
   if(!active && (now - prevT) < IDLE_INTERVAL_MS){ return; }   // idle → skip the draw this vsync
@@ -2327,10 +2360,36 @@ function frame(now){
   // eased zoom (smooth, slow transitions) with zoom-to-cursor re-anchor
   if(zoomAnchor && Math.abs(Math.log(targetZoom/zoom)) > 1e-4){
     const prev = zoom;
-    zoom = Math.exp(Math.log(zoom) + (Math.log(targetZoom)-Math.log(zoom))*(1 - Math.exp(-dt*ZOOM_EASE_HZ)));
+    // v56e: ズームを「等速直線運動」化。log 空間で targetZoom へ一定速度 ZOOM_RATE で滑走し(=スーッと等速)、
+    // 残距離が小さい所(gap < ZOOM_RATE/ZOOM_EASE_HZ)だけ距離比例に減速して滑らかに着地。ease-out(残距離比例)
+    // だけの旧式は開始が速く即減速する不等速だった。distance=speed×dt なので完全にフレームレート非依存。
+    // オーバーシュート無し(step が残距離を超えたら target にスナップ)。log 差で進むので wrap(zoom/target 同率)
+    // をまたいでも巡航は連続。単発ホイールは gap が小さく最初から ease-out 域=従来通り優しく着地。
+    const L = Math.log(zoom), T = Math.log(targetZoom), gap = T - L;
+    const speed = Math.min(ZOOM_RATE, Math.abs(gap)*ZOOM_EASE_HZ);   // 遠い→等速上限 / 近い→距離比例で減速
+    const step = speed*dt;
+    // step が残距離を超えたら target にスナップ(等速域のオーバーシュート防止)。それ以外は等速 or 減速で前進。
+    // 末尾は速度が距離比例(ZOOM_EASE_HZ)に落ちて滑らかに漸近着地 = 旧 ease-out と同じ挙動(新たな不連続ゼロ)。
+    // 収束判定は上の 1e-4 ゲートに委ねる(旧実装と同一)。
+    zoom = Math.exp(Math.abs(gap) <= step ? T : L + Math.sign(gap)*step);
     const b = worldAt(zoomAnchor[0], zoomAnchor[1], prev);
     const a = worldAt(zoomAnchor[0], zoomAnchor[1], zoom);
     center[0] += b[0]-a[0]; center[1] += b[1]-a[1];
+    targetCenter[0] += b[0]-a[0]; targetCenter[1] += b[1]-a[1];   // v56e: パン目標も同量シフト(ズームとパンを独立に保つ)
+  }
+  // v56e: パンの等速追走 — center を targetCenter へスクリーン相対の一定速度で滑走(ズームと対称)。
+  // ドラッグ中は targetCenter が指に追随し center が少し遅れて滑らかに追う。離すと残差を等速→減速で消して停止。
+  // 速度はスクリーン基準(画面高/秒)なので深ズームでも体感一定。frac で残距離の割合を進める=オーバーシュート無し。
+  // リード上限(pointermove の PAN_MAX_LEAD)で gap が有界なので離脱後の滑走も有界(慣性ドリフトにならない)。
+  {
+    const gx = targetCenter[0]-center[0], gy = targetCenter[1]-center[1];
+    const gapW = Math.hypot(gx, gy);
+    if(gapW > 0){
+      const gapScreen = gapW / vh();                                 // 残距離を画面高の割合に正規化
+      const speed = Math.min(PAN_RATE, gapScreen*PAN_EASE_HZ);       // 遠い→等速上限 / 近い→距離比例で減速
+      const frac = gapScreen <= speed*dt ? 1 : (speed*dt)/gapScreen; // 今フレームで詰める割合(残距離を超えたらスナップ)
+      center[0] += gx*frac; center[1] += gy*frac;
+    }
   }
   // ---- SEAMLESS LOOP: wrap deepest↔widest, dissolve the seam ----
   // The field is scale-following, so feature SIZE is identical across the wrap; a snapshot of the pre-wrap
@@ -2358,6 +2417,7 @@ function frame(now){
       cellBase = [Math.floor(center[0]), Math.floor(center[1])];   // 再基底 — spawn(randomize)と同型。ghost が覆う wrap 時のみ安全
     }
     wrapZoomRef = zoom; wrapCRef = [center[0], center[1]]; wrapARef = aspect;   // ghost motion reference (ジャンプ後の center 基準 = delta 0 から開始)
+    targetCenter[0] = center[0]; targetCenter[1] = center[1];   // v56e: 螺旋テレポート後はパン目標をスナップ(旧土地の目標へ滑らない。ゴーストが不連続を覆う)
     wrapFade = 1.0;
     // Snap the LOD to its post-wrap steady target NOW: the ghost covers the live layer at alpha=1 this frame,
     // so the octave jump is invisible. Otherwise detailSmooth eases 5.5→~3 THROUGH the fade — a second
@@ -2640,6 +2700,7 @@ function restoreFromCoord(o){                                       // the twin 
   seedHash = parseInt(o.sh,16)>>>0;
   makeParams(seedHash); makeStyle();
   center = [o.center[0], o.center[1]];
+  targetCenter = [center[0], center[1]];   // v56e: 復元位置へスナップ(パン滑走ゼロ)
   cellBase = [o.cellBase[0], o.cellBase[1]];
   zoom = targetZoom = o.zoom; zoomAnchor = null;
   wrapFade = 0; panVel[0]=0; panVel[1]=0;
