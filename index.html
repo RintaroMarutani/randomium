@@ -1199,7 +1199,10 @@ void main(){
   // exchanging weight over ~1-2 minutes — colours are永遠に波打つ. Time-only + spatially uniform → identical on
   // both sides of the loop wrap at any instant (v28 periodicity intact) and pan-seamless. Sitting inside the
   // mix() scales the swell by (1-lock): home-anchored seeds breathe more gently — intentional.
-  float themePos  = mix(D/(3.0*(1.0-uThemeLock)) + (biomeBig-0.5)*4.0 + uSeed.x*0.5
+  // v56d: 位置(パン)によるバイオーム変化を強化 4.0→6.0(ユーザー「横移動でバイオームが変わりにくい」)。
+  // biomeBig の [0,1] が位置だけで全 6 スロット幅(±3)を張る = 同じパン距離でより多くの土地を跨ぐ(≈1.5x 速い)。
+  // 位置項なので ZOOM 周期性(D 項)には無関係 → wrap の色連続は不変。lock で家寄せされる性格は (1-lock) 倍で残す。
+  float themePos  = mix(D/(3.0*(1.0-uThemeLock)) + (biomeBig-0.5)*6.0 + uSeed.x*0.5
                         + 0.35*sin(uFlow*2.3 + uSeed.y), seedTheme+0.5, uThemeLock);
 
   // find the TWO dominant SLOTS; each slot is mapped through the per-seed wheel into the 20-biome bank.
@@ -2118,9 +2121,7 @@ function endPtr(e){
   if(pts.size < 2) pinchDist = 0;
   if(pts.size === 0){
     dragging = false; lastPan = null;
-    // flick → coast: keep the tracked velocity ONLY if the pointer was still moving at release.
-    // A pause-then-release (deliberate stop) must not glide.
-    if(performance.now() - lastPanT > FLICK_MAX_GAP_MS){ panVel[0] = 0; panVel[1] = 0; }
+    panVel[0] = 0; panVel[1] = 0;   // v56b: 離した瞬間に停止(慣性グライド廃止 — フリックしても滑らない)
   }
   else if(pts.size === 1){ const v=[...pts.entries()][0]; lastPan = [v[1][0], v[1][1]]; dragging = true;
     panVel[0] = 0; panVel[1] = 0; lastPanT = performance.now(); }   // pinch→drag handover: no stale flick
@@ -2321,15 +2322,8 @@ function frame(now){
   }
   resize();                              // size the canvas now → snapshot + live frame share one resolution
   const detail = computeDetail(dt);
-  // ---- inertial pan: after a flick the world glides at the release speed (screen-constant = 等速直線運動
-  // at any zoom depth) with a long, gentle friction that settles back to 凪. Grabbing (pointerdown) stops it.
-  if(coasting){
-    const wpp = vh()/window.innerHeight;
-    center[0] -= panVel[0]*wpp*dt; center[1] += panVel[1]*wpp*dt;   // same sign convention as live drag
-    const fr = Math.exp(-dt/COAST_TAU);
-    panVel[0] *= fr; panVel[1] *= fr;
-    if(Math.hypot(panVel[0], panVel[1]) <= COAST_STOP_PXS){ panVel[0] = 0; panVel[1] = 0; }
-  }
+  // v56b: 慣性パン(フリック→滑走)を廃止(ユーザー「マウス操作で独りでに続くアニメは廃止」)。
+  // ドラッグ中は 1:1 で直接パン、離した瞬間に止まる(momentum/drift なし)。panVel は追跡だけ残す(下流無害)。
   // eased zoom (smooth, slow transitions) with zoom-to-cursor re-anchor
   if(zoomAnchor && Math.abs(Math.log(targetZoom/zoom)) > 1e-4){
     const prev = zoom;
