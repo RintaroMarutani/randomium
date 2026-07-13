@@ -157,6 +157,21 @@
   body.uistyle-notebook .specimen .sp-id{ font-family:Georgia,"Times New Roman",serif; letter-spacing:0.02em; }
   /* DASHBOARD 変種(RANDOMIUM): モノスペース強め・技術的 */
   body.uistyle-dashboard .specimen .sp-h{ letter-spacing:0.24em; }
+  /* NOIR: 銀塩プレート — 硬質・大文字・強い罫 */
+  body.uistyle-noir .specimen .sp-h{ letter-spacing:0.28em; }
+  body.uistyle-noir .specimen .sp-id{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:0.08em; text-transform:uppercase; }
+  /* PRISM: ホログラフィック — モノ + アクセント発光 */
+  body.uistyle-prism .specimen{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  body.uistyle-prism .specimen .sp-h{ color:var(--acc-bg); opacity:0.9; letter-spacing:0.22em; }
+  body.uistyle-prism .specimen .sp-id{ letter-spacing:0.06em; text-shadow:0 0 12px var(--acc-bg); }
+  /* LACTEA: 陶磁 — 軽い明朝/セリフ・余白広め */
+  body.uistyle-lactea .specimen{ font-family:"Hiragino Mincho ProN","Yu Mincho",Georgia,serif; gap:14px; }
+  body.uistyle-lactea .specimen .sp-id{ font-family:Georgia,"Times New Roman",serif; font-weight:400; letter-spacing:0.04em; }
+  body.uistyle-lactea .specimen .sp-h{ letter-spacing:0.16em; opacity:0.5; }
+  /* SOLARIS: 鉱物標本プレート — セリフ・活版風 */
+  body.uistyle-solaris .specimen{ font-family:"Hiragino Mincho ProN","Yu Mincho",Georgia,"Times New Roman",serif; }
+  body.uistyle-solaris .specimen .sp-id{ font-family:Georgia,"Times New Roman",serif; letter-spacing:0.03em; }
+  body.uistyle-solaris .specimen .sp-h{ letter-spacing:0.18em; }
   @media (max-width:860px){ body.has-specimen .specimen{ display:none; } }  /* モバイルは現状の帯UIのまま */
 </style>
 </head>
@@ -2028,6 +2043,7 @@ const CHANNELS = {
     biomeSet:[13,9,5,11,7,1,3,22],  // 黒曜石金/砂岩/地層/錆緑青/溶岩/金属/結晶/織物 = 暖色・鉱物・鉱脈・地質
     grade:{ tint:[1.16,1.06,0.66], desat:0.22 },    // 黄金(赤橙でなく金)+ aged-brass
     tex:[3, 0.06, 1.0],   // MOTTLE: 真鍮のパティナ斑
+    uiStyle:'solaris',    // v57h: 鉱物標本プレート(暖色ゴールド)
     ui:{ '--band-bg':'#f6ecd6', '--band-ink':'#1a1206', '--band-line':'#1a1206', '--acc-bg':'#9a6412', '--acc-ink':'#f6ecd6' } },
   verde: { name:'VERDE', tagline:'有機体のフィールド — 柔らかな緑の生態',
     finishSet:[2,8,9,5],  // film(粒状), dream(ソフト), haze(靄), matte(フラット)
@@ -2043,6 +2059,7 @@ const CHANNELS = {
     biomeSet:[2,1,23,21,22,3,5,15],  // 墨絵/金属/俯瞰都市/半導体/織物/結晶/地層/熱水噴出 = 高コントラスト・構造・グラフィック
     grade:{ tint:[0.97,0.99,1.04], desat:0.90 },    // 強脱色→ほぼグレースケール, 微寒色シルバー
     tex:[1, 0.07, 1.2],   // BRUSH: 銀のヘアライン/エッチング(やや強め)
+    uiStyle:'noir',       // v57h: 銀塩プレート(硬質モノクロ)
     ui:{ '--band-bg':'#08090b', '--band-ink':'#ecebe4', '--band-line':'#ecebe4', '--acc-bg':'#ecebe4', '--acc-ink':'#08090b' } },
   prism: { name:'PRISM', tagline:'玉虫色の回折 — 座標が一点物',
     finishSet:[6,10,1,6], // neon×2(発光), crt(発色), giclee(色を保つ版画)
@@ -2050,6 +2067,7 @@ const CHANNELS = {
     biomeSet:[0,4,8,19,3,15,18,13],  // 星雲/生物発光/オーロラ/渦巻銀河/結晶/熱水噴出/深海光柱/黒曜石金 = 発光・分光・宇宙
     grade:{ tint:[1.05,0.97,1.11], desat:0.0 },     // 脱色ゼロ(RANDOMIUM の対極)・青オパール寄せの薄い統一のみ
     tex:[2, 0.12, 1.0],   // IRIDESCENT: 薄膜オイルスリック(玉虫色のシーン)
+    uiStyle:'prism',      // v57h: ホログラフィック(発光アクセント)
     ui:{ '--band-bg':'#0b0a14', '--band-ink':'#e8f4ff', '--band-line':'#3a2f5c', '--acc-bg':'#d23cff', '--acc-ink':'#0b0a14' } },
   lactea: { name:'LACTEA', tagline:'淡い陶磁の標本 — 座標が一点物',
     finishSet:[8,5,9,0],  // dream, matte, haze, clean(高明度+釉薬グレーズ)
@@ -2057,6 +2075,7 @@ const CHANNELS = {
     biomeSet:[16,14,6,10,18,17,12,3],  // 雲海/花/翡翠浅瀬/苔床/深海光柱/外洋/氷河/結晶 = 淡い・大気・柔・陶磁
     grade:{ tint:[1.05,1.01,0.96], desat:0.32 },    // 温かいクリーム/骨白 + 低彩度
     tex:[3, 0.035, 2.4],  // MOTTLE: 釉薬の微細な斑(ごく控えめ)
+    uiStyle:'lactea',     // v57h: 陶磁(淡い軽セリフ)
     ui:{ '--band-bg':'#f6f1ea', '--band-ink':'#3b332d', '--band-line':'#3b332d', '--acc-bg':'#6e5048', '--acc-ink':'#f6f1ea' } },
 };
 const CHANNEL_ID = (()=>{ try{ const q=new URLSearchParams(location.search).get('ch'); return (q && CHANNELS[q]) ? q : 'randomium'; }catch(_){ return 'randomium'; } })();
@@ -2072,12 +2091,17 @@ const BIOME_MAP = (() => { const s = CHANNEL.biomeSet, m = new Float32Array(24);
   // v57g: リッチUIパイロット — uiStyle を持つチャンネルだけ左のスペシメンパネルを出す(RANDOMIUM=dashboard / VERDE=notebook)
   if(CHANNEL.uiStyle){
     document.body.classList.add('has-specimen', 'uistyle-'+CHANNEL.uiStyle);
-    const nb = CHANNEL.uiStyle==='notebook';
+    const SL = {   // v57g/h: uiStyle ごとのラベル(スペシメンパネルの語彙をチャンネルの世界観に合わせる)
+      dashboard:{ title:'Specimen',    coord:'Coordinate', cls:'Class',    foot:'座標=作品。同一座標は同一の景色を再現する。' },
+      notebook: { title:'Field Sample',coord:'Location',   cls:'Habitat',  foot:'押し葉標本のように、この座標を採集する。' },
+      noir:     { title:'Plate',       coord:'Coordinate', cls:'Process',  foot:'銀塩の一版。この座標を刷る。' },
+      prism:    { title:'Signal',      coord:'Vector',     cls:'Spectrum', foot:'分光する座標。光の一点を掴む。' },
+      lactea:   { title:'Piece',       coord:'Coordinate', cls:'Glaze',    foot:'釉薬の一片。この座標を選ぶ。' },
+      solaris:  { title:'Assay',       coord:'Locus',      cls:'Vein',     foot:'鉱脈の一点。この座標を採掘する。' },
+    };
+    const sl = SL[CHANNEL.uiStyle] || SL.dashboard;
     const set=(id,t)=>{ const e=document.getElementById(id); if(e) e.textContent=t; };
-    set('spTitle', nb ? 'Field Sample' : 'Specimen');
-    set('spkCoord', nb ? 'Location' : 'Coordinate');
-    set('spkClass', nb ? 'Habitat' : 'Class');
-    set('spFoot', nb ? '押し葉標本のように、この座標を採集する。' : '座標=作品。同一座標は同一の景色を再現する。');
+    set('spTitle', sl.title); set('spkCoord', sl.coord); set('spkClass', sl.cls); set('spFoot', sl.foot);
     // パレット見本(チャンネル UI 色から)
     const pal = document.getElementById('spPal');
     if(pal){ const u=CHANNEL.ui; ['--band-ink','--acc-bg','--band-line','--acc-ink','--band-bg']
