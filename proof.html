@@ -39,8 +39,8 @@
 </head>
 <body>
   <header class="band">
-    <a class="wordmark" href="index.html">RANDOMIUM</a>
-    <nav class="nav"><a href="index.html">EXPLORE</a><a href="ledger.html">LEDGER</a></nav>
+    <a class="wordmark" href="app.html">RANDOMIUM</a>
+    <nav class="nav"><a href="app.html">EXPLORE</a><a href="ledger.html">LEDGER</a></nav>
   </header>
   <main>
     <p class="kicker">座標証明 — CERTIFICATE</p>
@@ -70,7 +70,7 @@ function notFound(msg){
   body.innerHTML = '<h1>この座標は未発行です</h1>'
     + (cid?('<p class="cid">'+esc(cid)+'</p>'):'')
     + '<div class="empty">'+esc(msg||'指定された座標は、まだ作品として台帳に登録されていません。探索して見つけた景色は「Register coordinate」から先行予約のご希望を送れます。')
-    + ' <a href="index.html">探索する →</a></div>';
+    + ' <a href="app.html">探索する →</a></div>';
 }
 
 if(!cid){ notFound('URL に ?cid=... を付けて開いてください (例: proof.html?cid=C1a2b3c4d)。'); }
@@ -116,7 +116,7 @@ else {
         + '<tr><th>LEDGER</th><td>VERIFIED — 台帳と照合一致</td></tr>'
         + '</table>'
         + (sealNever ? '<p class="seal"><b>この座標・この書き出し設定の一点物は、二度と販売されません。</b></p>' : '')
-        + (coordRaw ? '<a class="openlink" href="index.html'+esc(coordRaw)+'">この座標を開く →</a>' : '');
+        + (coordRaw ? '<a class="openlink" href="app.html'+esc(coordRaw)+'">この座標を開く →</a>' : '');
     })
     .catch(err=>{ notFound('台帳を読み込めませんでした（'+esc(err.message)+'）。ホスティング環境でお試しください。'); });
 }
