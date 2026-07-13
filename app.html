@@ -2012,12 +2012,6 @@ const CHANNELS = {
     grade:{ tint:[1.05,1.01,0.96], desat:0.32 },    // 温かいクリーム/骨白 + 低彩度
     tex:[3, 0.035, 2.4],  // MOTTLE: 釉薬の微細な斑(ごく控えめ)
     ui:{ '--band-bg':'#f6f1ea', '--band-ink':'#3b332d', '--band-line':'#3b332d', '--acc-bg':'#6e5048', '--acc-ink':'#f6f1ea' } },
-  magma: { name:'MAGMA', tagline:'溶岩の熱源 — 座標が一点物',
-    finishSet:[6,6,4,7],  // neon×2(白熱コア), copper(地殻), riso(サーマル階調)
-    palSet:[1,1,1,4],     // 暖色×3(赤橙) + トライアド
-    grade:{ tint:[1.30,0.82,0.52], desat:0.06 },    // 赤橙を押し青を強く引く+ほぼ無脱色=鮮烈な熱
-    tex:[3, 0.08, 0.7],   // MOTTLE: 溶岩地殻の粗い斑(コース)
-    ui:{ '--band-bg':'#130609', '--band-ink':'#ff7d33', '--band-line':'#ff7d33', '--acc-bg':'#b8300a', '--acc-ink':'#ffe9d2' } },
 };
 const CHANNEL_ID = (()=>{ try{ const q=new URLSearchParams(location.search).get('ch'); return (q && CHANNELS[q]) ? q : 'randomium'; }catch(_){ return 'randomium'; } })();
 const CHANNEL = CHANNELS[CHANNEL_ID];
