@@ -134,6 +134,30 @@
   button.primary:hover{ background:#fff; color:#000; }
   button:disabled{ opacity:0.4; cursor:not-allowed; }
   button:disabled:hover{ background:#fff; color:#000; }
+
+  /* v57g: リッチUIパイロット — 左のスペシメン(標本)パネル。uiStyle を持つチャンネルのみ表示(RANDOMIUM=dashboard / VERDE=notebook)。 */
+  .specimen{ position:fixed; left:0; top:0; z-index:5; width:240px; height:100%;
+    padding:calc(60px + env(safe-area-inset-top)) 16px calc(70px + env(safe-area-inset-bottom));
+    display:none; flex-direction:column; gap:12px; overflow:auto;
+    background:var(--band-bg); color:var(--band-ink); border-right:1.5px solid var(--band-line);
+    font-family:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif; }
+  body.has-specimen .specimen{ display:flex; }
+  .specimen .sp-h{ font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; opacity:0.55; }
+  .specimen .sp-id{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:15px; font-weight:700;
+    letter-spacing:0.01em; border-bottom:1.5px solid var(--band-line); padding-bottom:10px; word-break:break-all; }
+  .specimen .sp-row{ display:flex; flex-direction:column; gap:2px; }
+  .specimen .sp-k{ font-size:9.5px; letter-spacing:0.15em; text-transform:uppercase; opacity:0.5; }
+  .specimen .sp-v{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; font-variant-numeric:tabular-nums; word-break:break-all; }
+  .specimen .sp-pal{ display:flex; gap:0; margin-top:3px; border:1px solid var(--band-line); }
+  .specimen .sp-pal i{ flex:1; height:18px; display:block; }
+  .specimen .sp-foot{ margin-top:auto; font-size:10px; line-height:1.5; opacity:0.5; }
+  /* NOTEBOOK 変種(VERDE): 明朝/セリフ・柔らかい罫 */
+  body.uistyle-notebook .specimen{ font-family:"Hiragino Mincho ProN","Yu Mincho",Georgia,"Times New Roman",serif; }
+  body.uistyle-notebook .specimen .sp-h{ letter-spacing:0.12em; opacity:0.6; }
+  body.uistyle-notebook .specimen .sp-id{ font-family:Georgia,"Times New Roman",serif; letter-spacing:0.02em; }
+  /* DASHBOARD 変種(RANDOMIUM): モノスペース強め・技術的 */
+  body.uistyle-dashboard .specimen .sp-h{ letter-spacing:0.24em; }
+  @media (max-width:860px){ body.has-specimen .specimen{ display:none; } }  /* モバイルは現状の帯UIのまま */
 </style>
 </head>
 <body>
@@ -145,6 +169,17 @@
     <a class="wordmark" href="index.html" title="← すべての世界(ポータル)へ">RANDOMIUM</a>
     <a class="bandlink" href="ledger.html" title="公開台帳 — 全記録">LEDGER</a>
   </header>
+
+  <!-- v57g: スペシメン(標本)パネル — uiStyle を持つチャンネルのみ表示。ライブ座標から標本メタを表示。 -->
+  <aside class="specimen" id="specimen" aria-label="標本情報">
+    <div class="sp-h" id="spTitle">SPECIMEN</div>
+    <div class="sp-id" id="spId">—</div>
+    <div class="sp-row"><span class="sp-k" id="spkCoord">Coordinate</span><span class="sp-v" id="spCoord">—</span></div>
+    <div class="sp-row"><span class="sp-k">Seed</span><span class="sp-v" id="spSeed">—</span></div>
+    <div class="sp-row"><span class="sp-k" id="spkClass">Class</span><span class="sp-v" id="spClass">—</span></div>
+    <div class="sp-row"><span class="sp-k">Palette</span><span class="sp-pal" id="spPal"></span></div>
+    <div class="sp-foot" id="spFoot"></div>
+  </aside>
 
   <div class="band bottom bar" id="bar">
     <div class="coordtable" title="現在座標 — 同じ座標は同じ景色を再現します">
@@ -1984,6 +2019,7 @@ const CHANNELS = {
     biomeSet:[1,3,12,21,20,22,5,15],  // 金属/結晶/氷河/半導体/顕微鏡細胞/織物/地層/熱水噴出 = 寒色・工業・結晶・標本
     grade:{ tint:[0.84,0.95,1.14], desat:0.40 },   // 寒色スチール(赤を引き青を押す)+ 脱色=メタリック
     tex:[1, 0.05, 1.0],   // BRUSH: 微細ヘアライン(ブラッシュドスチール)
+    uiStyle:'dashboard',  // v57g: リッチUIパイロット(鋼の標本ダッシュボード)
     ui:{ '--band-bg':'#e9edf2', '--band-ink':'#0c1420', '--band-line':'#0c1420', '--acc-bg':'#26384c', '--acc-ink':'#e9edf2' } },
   // v57b: 5並列設計(visual-expansion-menu)の確定値。全て色調マスク=形は 24 biome 共通・非AI・export parity 自動。
   solaris: { name:'SOLARIS', tagline:'暖色の鉱脈 — 金色の地層',
@@ -1999,6 +2035,7 @@ const CHANNELS = {
     biomeSet:[4,6,10,11,14,20,18,17],  // 生物発光/翡翠浅瀬/苔床/緑青/花/顕微鏡細胞/深海光柱/外洋 = 有機・生態・水
     grade:{ tint:[0.94,1.08,0.86], desat:0.14 },    // 温かいクロロフィル/苔/オリーブ
     tex:[3, 0.05, 1.6],   // MOTTLE: 有機的な粒/苔むら(細かめ)
+    uiStyle:'notebook',   // v57g: リッチUIパイロット(ハーバリウム野帳)
     ui:{ '--band-bg':'#eef2e2', '--band-ink':'#12220f', '--band-line':'#12220f', '--acc-bg':'#356b34', '--acc-ink':'#f2f6e8' } },
   noir: { name:'NOIR', tagline:'墨と銀 — 高コントラストの銅版標本',
     finishSet:[4,1,4,0],  // copper, giclee, copper, clean(銀のネガ space)
@@ -2032,6 +2069,20 @@ const BIOME_MAP = (() => { const s = CHANNEL.biomeSet, m = new Float32Array(24);
   const r=document.documentElement; for(const k in CHANNEL.ui) r.style.setProperty(k, CHANNEL.ui[k]);
   const wm=document.querySelector('.wordmark'); if(wm) wm.textContent = CHANNEL.name;
   document.title = CHANNEL.name;
+  // v57g: リッチUIパイロット — uiStyle を持つチャンネルだけ左のスペシメンパネルを出す(RANDOMIUM=dashboard / VERDE=notebook)
+  if(CHANNEL.uiStyle){
+    document.body.classList.add('has-specimen', 'uistyle-'+CHANNEL.uiStyle);
+    const nb = CHANNEL.uiStyle==='notebook';
+    const set=(id,t)=>{ const e=document.getElementById(id); if(e) e.textContent=t; };
+    set('spTitle', nb ? 'Field Sample' : 'Specimen');
+    set('spkCoord', nb ? 'Location' : 'Coordinate');
+    set('spkClass', nb ? 'Habitat' : 'Class');
+    set('spFoot', nb ? '押し葉標本のように、この座標を採集する。' : '座標=作品。同一座標は同一の景色を再現する。');
+    // パレット見本(チャンネル UI 色から)
+    const pal = document.getElementById('spPal');
+    if(pal){ const u=CHANNEL.ui; ['--band-ink','--acc-bg','--band-line','--acc-ink','--band-bg']
+      .forEach(k=>{ const i=document.createElement('i'); i.style.background=u[k]||'#888'; pal.appendChild(i); }); }
+  }
 }catch(_){} })();
 
 const styleHash01 = (a,b)=>{ const x = Math.sin(a*12.9898 + b*78.233) * 43758.5453; return x - Math.floor(x); };
@@ -2949,12 +3000,21 @@ setInterval(()=>{ claimBtn.classList.toggle('rare', rarityInfo().rare); }, 600);
 // 4 Hz is plenty — coordJSON+canonicalId are a few hundred ops. Values match the claim/permalink exactly.
 const crdX = document.getElementById('crdX'), crdY = document.getElementById('crdY');
 const crdZ = document.getElementById('crdZ'), crdH = document.getElementById('crdH');
+const _sp = CHANNEL.uiStyle ? {
+  id:document.getElementById('spId'), coord:document.getElementById('spCoord'),
+  seed:document.getElementById('spSeed'), cls:document.getElementById('spClass') } : null;
 setInterval(()=>{ try{
   const c = coordJSON();
   crdX.textContent = c.center[0].toFixed(3);
   crdY.textContent = c.center[1].toFixed(3);
   crdZ.textContent = (c.lz>=0?'+':'') + c.lz.toFixed(2);
   crdH.textContent = c.cid.slice(1);
+  if(_sp){   // v57g: スペシメンパネルのライブ標本メタ(coordJSON と同値=claim/パーマリンク一致)
+    _sp.id.textContent   = CHANNEL.name.slice(0,3).toUpperCase() + '·' + c.cid.slice(1).toUpperCase();
+    _sp.coord.textContent= 'X '+c.center[0].toFixed(2)+'  Y '+c.center[1].toFixed(2)+'  Z '+(c.lz>=0?'+':'')+c.lz.toFixed(2);
+    _sp.seed.textContent = c.sh;
+    _sp.cls.textContent  = (c.finish||'—') + ' · ' + (c.palette||'—');
+  }
 }catch(_){} }, 250);
 
 // BOOT: restore a shared coordinate from the URL hash (provenance permalink), else keep the random world.
