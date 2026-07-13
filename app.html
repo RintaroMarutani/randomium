@@ -173,6 +173,68 @@
   body.uistyle-solaris .specimen .sp-id{ font-family:Georgia,"Times New Roman",serif; letter-spacing:0.03em; }
   body.uistyle-solaris .specimen .sp-h{ letter-spacing:0.18em; }
   @media (max-width:860px){ body.has-specimen .specimen{ display:none; } }  /* モバイルは現状の帯UIのまま */
+
+  /* ================= v57i: チャンネル別の構造レイアウト(Codex UI 参考準拠・デスクトップのみ) =================
+     layout-label(NOIR)=全面アート+左下の浮遊ギャラリーキャプション / layout-hud(PRISM)=透明バンド+発光HUD /
+     layout-mat(LACTEA)=クリームのマット額装+中央キャプション / layout-plate(SOLARIS)=図版の飾り枠+下部アッセイ表。
+     機能(座標/書き出し/claim)は同一 DOM のまま配置だけ変える。<861px は従来の帯UI。 */
+  .capTitle{ display:none; font-weight:700; letter-spacing:0.14em; font-size:11px; text-transform:uppercase; }
+  #layoutfx{ position:fixed; inset:0; z-index:4; pointer-events:none; display:none; }
+  @media (min-width:861px){
+    /* ---- label (NOIR): 美術館の壁ラベル ---- */
+    body.layout-label .band.top{ background:transparent; border-bottom:none; }
+    body.layout-label .band.bottom{ left:26px; right:auto; bottom:26px; max-width:380px;
+      flex-direction:column; align-items:stretch; gap:10px; padding:16px 18px;
+      background:var(--band-bg); border:1px solid var(--band-line); opacity:0.94; }
+    body.layout-label .band.bottom .spacer{ display:none; }
+    body.layout-label .capTitle{ display:block; border-bottom:1px solid var(--band-line); padding-bottom:8px; }
+    body.layout-label .coordtable{ border:none; background:transparent; }
+    body.layout-label .coordtable .k, body.layout-label .coordtable .v{ border:none; padding:3px 8px 3px 0; font-size:11.5px; }
+    body.layout-label .bctrl{ border-top:1px solid var(--band-line); padding-top:10px; }
+
+    /* ---- hud (PRISM): 発光HUDオーバーレイ ---- */
+    body.layout-hud .band.top{ background:transparent; border-bottom:none; }
+    body.layout-hud .band.bottom{ background:transparent; border-top:none; padding-bottom:20px; }
+    body.layout-hud .coordtable{ position:fixed; top:12px; left:50%; transform:translateX(-50%);
+      background:transparent; border:1px solid var(--acc-bg); box-shadow:0 0 16px color-mix(in srgb, var(--acc-bg) 45%, transparent), inset 0 0 10px color-mix(in srgb, var(--acc-bg) 18%, transparent); }
+    body.layout-hud .coordtable .k{ color:var(--acc-bg); border-right-color:var(--acc-bg); }
+    body.layout-hud .coordtable .v{ color:var(--band-ink); border-right-color:var(--acc-bg); text-shadow:0 0 8px color-mix(in srgb, var(--acc-bg) 60%, transparent); }
+    body.layout-hud .bctrl button{ background:transparent; border-color:var(--acc-bg); color:var(--band-ink); }
+    body.layout-hud .bctrl button:hover{ background:var(--acc-bg); color:var(--band-bg); }
+    body.layout-hud #layoutfx{ display:block; }
+    body.layout-hud #layoutfx::before, body.layout-hud #layoutfx::after,
+    body.layout-hud #layoutfx span{ content:""; position:fixed; width:34px; height:34px; border:2px solid var(--acc-bg);
+      filter:drop-shadow(0 0 6px var(--acc-bg)); }
+    body.layout-hud #layoutfx::before{ top:64px; left:16px; border-right:none; border-bottom:none; }
+    body.layout-hud #layoutfx::after{ top:64px; right:16px; border-left:none; border-bottom:none; }
+    body.layout-hud #layoutfx span:first-child{ bottom:78px; left:16px; border-right:none; border-top:none; }
+    body.layout-hud #layoutfx span:last-child{ bottom:78px; right:16px; border-left:none; border-top:none; }
+
+    /* ---- mat (LACTEA): 陶磁カタログのマット額装 ---- */
+    body.layout-mat #layoutfx{ display:block; border:solid var(--band-bg); border-width:52px 68px 150px; }
+    body.layout-mat .band.top{ background:transparent; border-bottom:none; justify-content:center; }
+    body.layout-mat .band.top .wordmark{ font-weight:400; letter-spacing:0.34em; font-size:15px;
+      font-family:Georgia,"Times New Roman",serif; }
+    body.layout-mat .band.top .bandlink{ position:fixed; right:20px; }
+    body.layout-mat .band.bottom{ background:transparent; border-top:none; justify-content:center; gap:14px;
+      padding-bottom:30px; flex-direction:column; align-items:center; }
+    body.layout-mat .capTitle{ display:block; font-family:Georgia,serif; font-weight:400; letter-spacing:0.22em; font-size:11.5px; }
+    body.layout-mat .band.bottom .spacer{ display:none; }
+    body.layout-mat .coordtable{ border:none; background:transparent; }
+    body.layout-mat .coordtable .k, body.layout-mat .coordtable .v{ border:none; font-size:11px; }
+    body.layout-mat .bctrl button{ border-width:1px; }
+
+    /* ---- plate (SOLARIS): 鉱物学図版(飾り枠+アッセイ表) ---- */
+    body.layout-plate #layoutfx{ display:block; border:2px solid var(--band-bg); inset:10px; }
+    body.layout-plate #layoutfx::before{ content:""; position:absolute; inset:4px; border:4px double var(--band-bg); opacity:0.9; }
+    body.layout-plate .band.top{ justify-content:center; }
+    body.layout-plate .band.top .wordmark{ font-family:Georgia,"Times New Roman",serif; letter-spacing:0.26em; }
+    body.layout-plate .band.top .bandlink{ position:fixed; right:26px; }
+    body.layout-plate .coordtable{ flex:1; }
+    body.layout-plate .coordtable .k, body.layout-plate .coordtable .v{ flex:1 1 auto; justify-content:center;
+      font-family:Georgia,"Times New Roman",serif; }
+    body.layout-plate .band.bottom .spacer{ display:none; }
+  }
 </style>
 </head>
 <body>
@@ -197,6 +259,7 @@
   </aside>
 
   <div class="band bottom bar" id="bar">
+    <div class="capTitle" id="capTitle"></div><!-- v57i: label/mat レイアウトのキャプション見出し -->
     <div class="coordtable" title="現在座標 — 同じ座標は同じ景色を再現します">
       <span class="k">X</span><span class="v" id="crdX">0</span>
       <span class="k">Y</span><span class="v" id="crdY">0</span>
@@ -2043,7 +2106,7 @@ const CHANNELS = {
     biomeSet:[13,9,5,11,7,1,3,22],  // 黒曜石金/砂岩/地層/錆緑青/溶岩/金属/結晶/織物 = 暖色・鉱物・鉱脈・地質
     grade:{ tint:[1.16,1.06,0.66], desat:0.22 },    // 黄金(赤橙でなく金)+ aged-brass
     tex:[3, 0.06, 1.0],   // MOTTLE: 真鍮のパティナ斑
-    uiStyle:'solaris',    // v57h: 鉱物標本プレート(暖色ゴールド)
+    layout:'plate',       // v57i: 鉱物学図版(飾り枠+アッセイ表・Codex参考準拠)
     ui:{ '--band-bg':'#f6ecd6', '--band-ink':'#1a1206', '--band-line':'#1a1206', '--acc-bg':'#9a6412', '--acc-ink':'#f6ecd6' } },
   verde: { name:'VERDE', tagline:'有機体のフィールド — 柔らかな緑の生態',
     finishSet:[2,8,9,5],  // film(粒状), dream(ソフト), haze(靄), matte(フラット)
@@ -2059,7 +2122,7 @@ const CHANNELS = {
     biomeSet:[2,1,23,21,22,3,5,15],  // 墨絵/金属/俯瞰都市/半導体/織物/結晶/地層/熱水噴出 = 高コントラスト・構造・グラフィック
     grade:{ tint:[0.97,0.99,1.04], desat:0.90 },    // 強脱色→ほぼグレースケール, 微寒色シルバー
     tex:[1, 0.07, 1.2],   // BRUSH: 銀のヘアライン/エッチング(やや強め)
-    uiStyle:'noir',       // v57h: 銀塩プレート(硬質モノクロ)
+    layout:'label',       // v57i: 美術館の壁ラベル(全面アート+浮遊キャプション・Codex参考準拠)
     ui:{ '--band-bg':'#08090b', '--band-ink':'#ecebe4', '--band-line':'#ecebe4', '--acc-bg':'#ecebe4', '--acc-ink':'#08090b' } },
   prism: { name:'PRISM', tagline:'玉虫色の回折 — 座標が一点物',
     finishSet:[6,10,1,6], // neon×2(発光), crt(発色), giclee(色を保つ版画)
@@ -2067,7 +2130,7 @@ const CHANNELS = {
     biomeSet:[0,4,8,19,3,15,18,13],  // 星雲/生物発光/オーロラ/渦巻銀河/結晶/熱水噴出/深海光柱/黒曜石金 = 発光・分光・宇宙
     grade:{ tint:[1.05,0.97,1.11], desat:0.0 },     // 脱色ゼロ(RANDOMIUM の対極)・青オパール寄せの薄い統一のみ
     tex:[2, 0.12, 1.0],   // IRIDESCENT: 薄膜オイルスリック(玉虫色のシーン)
-    uiStyle:'prism',      // v57h: ホログラフィック(発光アクセント)
+    layout:'hud',         // v57i: 発光HUDオーバーレイ(コーナーブラケット+発光座標)
     ui:{ '--band-bg':'#0b0a14', '--band-ink':'#e8f4ff', '--band-line':'#3a2f5c', '--acc-bg':'#d23cff', '--acc-ink':'#0b0a14' } },
   lactea: { name:'LACTEA', tagline:'淡い陶磁の標本 — 座標が一点物',
     finishSet:[8,5,9,0],  // dream, matte, haze, clean(高明度+釉薬グレーズ)
@@ -2075,7 +2138,7 @@ const CHANNELS = {
     biomeSet:[16,14,6,10,18,17,12,3],  // 雲海/花/翡翠浅瀬/苔床/深海光柱/外洋/氷河/結晶 = 淡い・大気・柔・陶磁
     grade:{ tint:[1.05,1.01,0.96], desat:0.32 },    // 温かいクリーム/骨白 + 低彩度
     tex:[3, 0.035, 2.4],  // MOTTLE: 釉薬の微細な斑(ごく控えめ)
-    uiStyle:'lactea',     // v57h: 陶磁(淡い軽セリフ)
+    layout:'mat',         // v57i: 陶磁カタログのマット額装(中央キャプション)
     ui:{ '--band-bg':'#f6f1ea', '--band-ink':'#3b332d', '--band-line':'#3b332d', '--acc-bg':'#6e5048', '--acc-ink':'#f6f1ea' } },
 };
 const CHANNEL_ID = (()=>{ try{ const q=new URLSearchParams(location.search).get('ch'); return (q && CHANNELS[q]) ? q : 'randomium'; }catch(_){ return 'randomium'; } })();
@@ -2088,6 +2151,14 @@ const BIOME_MAP = (() => { const s = CHANNEL.biomeSet, m = new Float32Array(24);
   const r=document.documentElement; for(const k in CHANNEL.ui) r.style.setProperty(k, CHANNEL.ui[k]);
   const wm=document.querySelector('.wordmark'); if(wm) wm.textContent = CHANNEL.name;
   document.title = CHANNEL.name;
+  // v57i: 構造レイアウト — CHANNEL.layout で DOM 配置を変える(label/hud/mat/plate。既定 side=帯+パネル)
+  const layout = CHANNEL.layout || 'side';
+  document.body.classList.add('layout-'+layout);
+  if(layout==='hud' || layout==='mat' || layout==='plate'){
+    const fx=document.createElement('div'); fx.id='layoutfx'; fx.setAttribute('aria-hidden','true');
+    fx.appendChild(document.createElement('span')); fx.appendChild(document.createElement('span'));
+    document.body.appendChild(fx);
+  }
   // v57g: リッチUIパイロット — uiStyle を持つチャンネルだけ左のスペシメンパネルを出す(RANDOMIUM=dashboard / VERDE=notebook)
   if(CHANNEL.uiStyle){
     document.body.classList.add('has-specimen', 'uistyle-'+CHANNEL.uiStyle);
@@ -3027,12 +3098,15 @@ const crdZ = document.getElementById('crdZ'), crdH = document.getElementById('cr
 const _sp = CHANNEL.uiStyle ? {
   id:document.getElementById('spId'), coord:document.getElementById('spCoord'),
   seed:document.getElementById('spSeed'), cls:document.getElementById('spClass') } : null;
+const _cap = document.getElementById('capTitle');   // v57i: label/mat キャプション(CSS 非表示時は文字列セットのみ=無害)
+const _capPrefix = { label:'Plate', mat:'Piece' }[CHANNEL.layout] || 'Work';
 setInterval(()=>{ try{
   const c = coordJSON();
   crdX.textContent = c.center[0].toFixed(3);
   crdY.textContent = c.center[1].toFixed(3);
   crdZ.textContent = (c.lz>=0?'+':'') + c.lz.toFixed(2);
   crdH.textContent = c.cid.slice(1);
+  if(_cap) _cap.textContent = _capPrefix + ' — ' + CHANNEL.name + ' · ' + c.cid.slice(1).toUpperCase();
   if(_sp){   // v57g: スペシメンパネルのライブ標本メタ(coordJSON と同値=claim/パーマリンク一致)
     _sp.id.textContent   = CHANNEL.name.slice(0,3).toUpperCase() + '·' + c.cid.slice(1).toUpperCase();
     _sp.coord.textContent= 'X '+c.center[0].toFixed(2)+'  Y '+c.center[1].toFixed(2)+'  Z '+(c.lz>=0?'+':'')+c.lz.toFixed(2);
