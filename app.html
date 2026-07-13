@@ -299,6 +299,7 @@ uniform float uThemeLock; // how strongly the seed's HOME theme dominates themeP
 // so every world curates its own sextet of biomes while the seam stays mathematically seamless.
 uniform float uThemeBase;   // integer-valued 0..15
 uniform float uThemeStride; // integer-valued, odd (1/3/5/7) -> 6 distinct biomes per seed
+uniform float uBiomeMap[24]; // v57f: チャンネルのバイオーム取捨選択 — ホイール出力(0-23)を許可バイオームへ写像。既定=恒等(k→k)
 uniform vec4  uShape;  // lineWidthPx, lineSpacing, warpAmp, foldAmp
 uniform vec4  uTone;   // flowSpeedMul, metalBias, contrast, meltK
 // FINISH PRESET (seed-derived, INDEPENDENT of seedHash → a true combinatorial multiplier, see docs/DIVERSITY_EXPANSION.md §6).
@@ -1245,6 +1246,7 @@ void main(){
     dpos -= 6.0*floor(dpos/6.0 + 0.5);          // nearest wrap on a cycle of 6 slots
     float wgt = octWin(dpos, 2.0);
     int ti = int(mod(uThemeBase + float(i)*uThemeStride, 24.0) + 0.5);   // wheel: slot -> biome (bank=24 v56; integer-valued floats)
+    ti = int(uBiomeMap[ti] + 0.5);   // v57f: チャンネルのバイオーム取捨選択(subset へ写像。CPU の buildSlotPalettes と同一 remap)
     amtA+=wgt*AMTA[ti]; amtB+=wgt*AMTB[ti]; amtC+=wgt*AMTC[ti]; amtD+=wgt*AMTD[ti];   // scalar amounts stay linear partition-of-unity
     // v55c: 配色はスロット別 uniform(既定 or seedHash ランダム、CPU 前計算)を読む。技法量(AMTA/B/C)は不変。
     sCool+=wgt*uSlotCool[i]; sWarm+=wgt*uSlotWarm[i]; sBg+=wgt*uSlotBg[i];
@@ -1736,7 +1738,8 @@ function biomePalette_(ti){
 function buildSlotPalettes(){
   const base = P.themeBase||0, stride = P.themeStride||1;
   for(let i=0;i<6;i++){
-    const ti = ((Math.round(base + i*stride) % 24) + 24) % 24;
+    const tw = ((Math.round(base + i*stride) % 24) + 24) % 24;
+    const ti = (typeof BIOME_MAP!=='undefined') ? (BIOME_MAP[tw]|0) : tw;   // v57f: シェーダと同一のバイオーム remap
     const p = biomePalette_(ti);
     for(let c=0;c<6;c++){ const v = p[SLOT_CH[c]]; const arr = SLOT_PAL[SLOT_CH[c]];
       arr[i*3] = v[0]; arr[i*3+1] = v[1]; arr[i*3+2] = v[2]; }
@@ -1758,7 +1761,7 @@ for(const k of ['uAspect','uFlow','uCenter','uCellBase','uViewHeight','uLogZoom'
                 'uFreq','uShape','uTone','uRegimePhase','uGenA','uGenB','uGrade','uThemeLock','uThemeBase','uThemeStride','uDotPitch','uPixel','uResY',
                 'uFinishTone','uFinishTex','uPalette','uScan','uLayer','uTileOrigin',
                 'uSlotCool','uSlotWarm','uSlotBg','uSlotInk','uSlotStar','uSlotGlow','uCursor','uCursorFX',
-                'uChTint','uChDesat','uChTex'])
+                'uChTint','uChDesat','uChTex','uBiomeMap'])
   U[k] = gl.getUniformLocation(prog, k);
 
 /* ===== seamless infinite-zoom LOOP: crossfade compositor + snapshot FBO ===== */
@@ -1978,6 +1981,7 @@ const CHANNELS = {
   randomium: { name:'RANDOMIUM', tagline:'寒色の金属標本 — 座標が一点物',
     finishSet:[5,5,0,1],  // matte, matte, clean, giclee(低コントラスト・メタル寄り)
     palSet:[2,2,2,5],     // 寒色×3, モノクロ
+    biomeSet:[1,3,12,21,20,22,5,15],  // 金属/結晶/氷河/半導体/顕微鏡細胞/織物/地層/熱水噴出 = 寒色・工業・結晶・標本
     grade:{ tint:[0.84,0.95,1.14], desat:0.40 },   // 寒色スチール(赤を引き青を押す)+ 脱色=メタリック
     tex:[1, 0.05, 1.0],   // BRUSH: 微細ヘアライン(ブラッシュドスチール)
     ui:{ '--band-bg':'#e9edf2', '--band-ink':'#0c1420', '--band-line':'#0c1420', '--acc-bg':'#26384c', '--acc-ink':'#e9edf2' } },
@@ -1985,36 +1989,45 @@ const CHANNELS = {
   solaris: { name:'SOLARIS', tagline:'暖色の鉱脈 — 金色の地層',
     finishSet:[4,4,7,1],  // copper×2(銅版), riso(金ポスター), giclee(暖色刷り)
     palSet:[1,1,6,1],     // 暖色×3 + split(稀な酸化二トーン)
+    biomeSet:[13,9,5,11,7,1,3,22],  // 黒曜石金/砂岩/地層/錆緑青/溶岩/金属/結晶/織物 = 暖色・鉱物・鉱脈・地質
     grade:{ tint:[1.16,1.06,0.66], desat:0.22 },    // 黄金(赤橙でなく金)+ aged-brass
     tex:[3, 0.06, 1.0],   // MOTTLE: 真鍮のパティナ斑
     ui:{ '--band-bg':'#f6ecd6', '--band-ink':'#1a1206', '--band-line':'#1a1206', '--acc-bg':'#9a6412', '--acc-ink':'#f6ecd6' } },
   verde: { name:'VERDE', tagline:'有機体のフィールド — 柔らかな緑の生態',
     finishSet:[2,8,9,5],  // film(粒状), dream(ソフト), haze(靄), matte(フラット)
     palSet:[0,1,6],       // 素の生態色, 黄金緑, 霧スプリット
+    biomeSet:[4,6,10,11,14,20,18,17],  // 生物発光/翡翠浅瀬/苔床/緑青/花/顕微鏡細胞/深海光柱/外洋 = 有機・生態・水
     grade:{ tint:[0.94,1.08,0.86], desat:0.14 },    // 温かいクロロフィル/苔/オリーブ
     tex:[3, 0.05, 1.6],   // MOTTLE: 有機的な粒/苔むら(細かめ)
     ui:{ '--band-bg':'#eef2e2', '--band-ink':'#12220f', '--band-line':'#12220f', '--acc-bg':'#356b34', '--acc-ink':'#f2f6e8' } },
   noir: { name:'NOIR', tagline:'墨と銀 — 高コントラストの銅版標本',
     finishSet:[4,1,4,0],  // copper, giclee, copper, clean(銀のネガ space)
     palSet:[5,5,5,6],     // モノ×3 + 稀な銀塩スプリット
+    biomeSet:[2,1,23,21,22,3,5,15],  // 墨絵/金属/俯瞰都市/半導体/織物/結晶/地層/熱水噴出 = 高コントラスト・構造・グラフィック
     grade:{ tint:[0.97,0.99,1.04], desat:0.90 },    // 強脱色→ほぼグレースケール, 微寒色シルバー
     tex:[1, 0.07, 1.2],   // BRUSH: 銀のヘアライン/エッチング(やや強め)
     ui:{ '--band-bg':'#08090b', '--band-ink':'#ecebe4', '--band-line':'#ecebe4', '--acc-bg':'#ecebe4', '--acc-ink':'#08090b' } },
   prism: { name:'PRISM', tagline:'玉虫色の回折 — 座標が一点物',
     finishSet:[6,10,1,6], // neon×2(発光), crt(発色), giclee(色を保つ版画)
     palSet:[4,3,6,4],     // トライアド/補色/スプリット=色相分離が本命
+    biomeSet:[0,4,8,19,3,15,18,13],  // 星雲/生物発光/オーロラ/渦巻銀河/結晶/熱水噴出/深海光柱/黒曜石金 = 発光・分光・宇宙
     grade:{ tint:[1.05,0.97,1.11], desat:0.0 },     // 脱色ゼロ(RANDOMIUM の対極)・青オパール寄せの薄い統一のみ
     tex:[2, 0.12, 1.0],   // IRIDESCENT: 薄膜オイルスリック(玉虫色のシーン)
     ui:{ '--band-bg':'#0b0a14', '--band-ink':'#e8f4ff', '--band-line':'#3a2f5c', '--acc-bg':'#d23cff', '--acc-ink':'#0b0a14' } },
   lactea: { name:'LACTEA', tagline:'淡い陶磁の標本 — 座標が一点物',
     finishSet:[8,5,9,0],  // dream, matte, haze, clean(高明度+釉薬グレーズ)
     palSet:[1,6,2,1],     // パステル暖色主体 + 陶磁の冷note
+    biomeSet:[16,14,6,10,18,17,12,3],  // 雲海/花/翡翠浅瀬/苔床/深海光柱/外洋/氷河/結晶 = 淡い・大気・柔・陶磁
     grade:{ tint:[1.05,1.01,0.96], desat:0.32 },    // 温かいクリーム/骨白 + 低彩度
     tex:[3, 0.035, 2.4],  // MOTTLE: 釉薬の微細な斑(ごく控えめ)
     ui:{ '--band-bg':'#f6f1ea', '--band-ink':'#3b332d', '--band-line':'#3b332d', '--acc-bg':'#6e5048', '--acc-ink':'#f6f1ea' } },
 };
 const CHANNEL_ID = (()=>{ try{ const q=new URLSearchParams(location.search).get('ch'); return (q && CHANNELS[q]) ? q : 'randomium'; }catch(_){ return 'randomium'; } })();
 const CHANNEL = CHANNELS[CHANNEL_ID];
+// v57f: チャンネルのバイオーム取捨選択 — 24 ホイール出力を biomeSet(許可バイオーム)へ写像する 24 要素マップ。
+// 既定(biomeSet 無し)= 恒等(全24)。biomeSet があれば k→biomeSet[k % len] で subset へ畳む(決定論・6スロットの多様性は維持)。
+const BIOME_MAP = (() => { const s = CHANNEL.biomeSet, m = new Float32Array(24);
+  for(let k=0;k<24;k++) m[k] = (s && s.length) ? s[k % s.length] : k; return m; })();
 (function applyChannelUI(){ try{
   const r=document.documentElement; for(const k in CHANNEL.ui) r.style.setProperty(k, CHANNEL.ui[k]);
   const wm=document.querySelector('.wordmark'); if(wm) wm.textContent = CHANNEL.name;
@@ -2360,6 +2373,7 @@ function setUniforms(asp, renderHeightPx, energyVal, detailVal){
   gl.uniform4fv(U.uGenA, P.genA); gl.uniform4fv(U.uGenB, P.genB);
   gl.uniform4fv(U.uGrade, P.grade); gl.uniform1f(U.uThemeLock, P.themeLock);
   gl.uniform1f (U.uThemeBase, P.themeBase); gl.uniform1f(U.uThemeStride, P.themeStride);
+  gl.uniform1fv(U.uBiomeMap, BIOME_MAP);   // v57f: チャンネルのバイオーム取捨選択(定数・単一経路=export parity)
   gl.uniform4fv(U.uFinishTone, STYLE.tone); gl.uniform4fv(U.uFinishTex, STYLE.tex); gl.uniform2fv(U.uPalette, STYLE.pal);
   const chg = CHANNEL.grade || {tint:[1,1,1], desat:0};   // v57: チャンネル色グレード(既定=恒等)。単一経路=export parity
   gl.uniform3f(U.uChTint, chg.tint[0], chg.tint[1], chg.tint[2]); gl.uniform1f(U.uChDesat, chg.desat || 0);
